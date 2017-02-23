@@ -1,7 +1,8 @@
-Sample usage of the application :
+Sample usage of the application
+===============================
 
 Compilation
-===========
+-----------
 Change to DPDK directory
 Set RTE_SDK variable to current folder
 Set RTE_TARGET variable to "x86_64-ivshmem-linuxapp-*"
@@ -11,20 +12,20 @@ Change to SPP directory
 Compile SPP: "make"
 
 Start Controller
-================
+----------------
 python spp.py -p 5555 -s 6666
 
 Start spp_primary
-=================
+-----------------
 sudo ./src/primary/src/primary/x86_64-ivshmem-linuxapp-gcc/spp_primary -c 0x02 -n 4 --socket-mem 512,512 --huge-dir=/dev/hugepages --proc-type=primary -- -p 0x03 -n 4 -s 192.168.122.1:5555
 
 Start spp_nfv
-=============
+-------------
 sudo ./src/nfv/src/nfv/x86_64-ivshmem-linuxapp-gcc/spp_nfv -c 0x06 -n 4 --proc-type=secondary -- -n 1 -s 192.168.122.1:6666
 sudo ./src/nfv/src/nfv/x86_64-ivshmem-linuxapp-gcc/spp_nfv 0x0A -n 4 --proc-type=secondary -- -n 1 -s 192.168.122.1:6666
 
 Start VM (QEMU)
-===============
+---------------
 [NOTE: Custom QEMU version required]
 
 Common qemu command line:
@@ -46,20 +47,23 @@ Two types of VM interfaces supported:
     Insert into qemu command line:-
     sudo ./x86_64-softmmu/qemu-system-x86_64 -cpu host -enable-kvm -object memory-backend-file,id=mem,size=2048M,mem-path=/dev/hugepages,share=on -numa node,memdev=mem -mem-prealloc -hda /home/dpdk/debian_wheezy_amd64_standard.qcow2 -m 2048 -smp cores=4,threads=1,sockets=1 -device e1000,netdev=net0,mac=DE:AD:BE:EF:00:01 -netdev tap,id=net0 -device ivshmem,size=2048M,shm=fd:/dev/hugepages/rtemap_0:0x0:0x40000000:/dev/zero:0x0:0x3fffc000:/var/run/.dpdk_ivshmem_metadata_pp_ivshmem:0x0:0x4000 -nographic
 
-* vhost interface
------------------
+vhost interface
+~~~~~~~~~~~~~~~~~
   - spp should do a "sec x:add vhost y" before starting the VM. x: vnf number, y: vhost port id.
   - Needs vhost argument for qemu:
     sudo ./x86_64-softmmu/qemu-system-x86_64 -cpu host -enable-kvm -object memory-backend-file,id=mem,size=2048M,mem-path=/dev/hugepages,share=on -numa node,memdev=mem -mem-prealloc -hda /home/dpdk/debian_wheezy_amd64_standard.qcow2 -m 2048 -smp cores=4,threads=1,sockets=1 -device e1000,netdev=net0,mac=DE:AD:BE:EF:00:01 -netdev tap,id=net0 -chardev socket,id=chr0,path=/tmp/sock0 -netdev vhost-user,id=net1,chardev=chr0,vhostforce -device virtio-net-pci,netdev=net1 -nographic -vnc :2
 
 
 Start spp_vm (Inside the VM)
-============================
+----------------------------
 sudo ./src/vm/src/vm/x86_64-ivshmem-linuxapp-gcc/spp_vm -c 0x03 -n 4 --proc-type=primary -- -p 0x01 -n 1 -s 192.168.122.1:6666
 
 
+Test Setups
+===========
 
 Test Setup 1: Single NFV
+------------------------
 
                                                                         __
                                     +--------------+                      |
@@ -82,18 +86,21 @@ Test Setup 1: Single NFV
                               |                           |
                               :                           v
 
-Configuration for L2fwd:-
+Configuration for L2fwd
+~~~~~~~~~~~~~~~~~~~~~~~
 spp > sec 0;patch 0 1
 spp > sec 0;patch 1 0
 spp > sec 0;forward
 
-Configuration for loopback:-
+Configuration for loopback
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 spp > sec 0;patch 0 0
 spp > sec 0;patch 1 1
 spp > sec 0;forward
 
 
 Test Setup 2: Dual NFV
+----------------------
 
                                                                         __
                          +--------------+          +--------------+       |
@@ -116,7 +123,8 @@ Test Setup 2: Dual NFV
                               |                           |
                               :                           v
 
-Configuration for L2fwd:-
+Configuration for L2fwd
+~~~~~~~~~~~~~~~~~~~~~~~
 spp > sec 0;patch 0 1
 spp > sec 1;patch 1 0
 spp > sec 0;forward
@@ -144,7 +152,8 @@ spp > sec 1;forward
                               |                           |
                               v                           v
 
-Configuration for loopback:-
+Configuration for loopback
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 spp > sec 0;patch 0 0
 spp > sec 1;patch 1 1
 spp > sec 0;forward
@@ -152,6 +161,7 @@ spp > sec 1;forward
 
 
 Test Setup 3: Dual NFV with ring pmd
+------------------------------------
 
                                                                         __
                        +----------+      ring        +----------+         |
@@ -174,7 +184,8 @@ Test Setup 3: Dual NFV with ring pmd
                               |                           |
                               :                           v
 
-Configuration for Uni directional L2fwd:-
+Configuration for Uni directional L2fwd
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 spp > sec 0;add ring 0
 spp > sec 1;add ring 0
 spp > sec 0;patch 0 2
@@ -207,7 +218,8 @@ spp > sec 1;forward
                               |                           |
                               v                           v
 
-Configuration for L2fwd:-
+Configuration for L2fwd
+~~~~~~~~~~~~~~~~~~~~~~~
 spp > sec 0;add ring 0
 spp > sec 0;add ring 1
 spp > sec 1;add ring 0
@@ -280,6 +292,7 @@ spp > sec 0;forward
 
 
 Test Setup 4: Single NFV with VM through vhost pmd
+--------------------------------------------------
 
                                                    __
                           +----------------------+   |
@@ -319,6 +332,8 @@ sec 0 = spp_nfv
 sec 1 = spp_vm
 
 
+Configuration for Uni directional L2fwd
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [rm –rf /tmp/sock0]
 spp > sec 0;add vhost 0
 [start VM]
@@ -330,7 +345,8 @@ spp > sec 0;forward
 
 
 
-Optimizing qemu performance:-
+Optimizing qemu performance
+---------------------------
 First find out the PID for qemu-system-x86 process
 ps ea
    PID TTY      STAT   TIME COMMAND

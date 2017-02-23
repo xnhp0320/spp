@@ -37,8 +37,8 @@ Two types of VM interfaces supported:
 * ring based (ivshmem)
 * vhost interface
 
-* ring based (ivshmem)
-----------------------
+ring based (ivshmem)
+~~~~~~~~~~~~~~~~~~~~
   - This requires custom qemu
   - Needs ivshmem argument for qemu, refer to spp_primary logs to get the ivshmem metadata command line:
     APP: QEMU command line for config 'pp_ivshmem':

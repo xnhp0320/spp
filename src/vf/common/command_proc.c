@@ -17,6 +17,9 @@
 #ifdef SPP_MIRROR_MODULE
 #include "../../mirror/spp_mirror.h"
 #endif /* SPP_MIRROR_MODULE */
+#ifdef SPP_PCAP_MODULE
+#include "../../pcap/spp_pcap.h"
+#endif /* SPP_PCAP_MODULE */
 #include "command_conn.h"
 #include "command_dec.h"
 #include "command_proc.h"
@@ -74,6 +77,7 @@ const char *SECONDARY_PROCESS_TYPE_SRINGS[] = {
 	"none",
 	"vf",
 	"mirror",
+	"pcap",
 
 	/* termination */ "",
 };
@@ -737,6 +741,12 @@ execute_command(const struct spp_command *command)
 					"Execute flush.\n");
 			ret = spp_flush();
 		}
+		break;
+
+	case SPP_CMDTYPE_START:
+		break;
+
+	case SPP_CMDTYPE_STOP:
 		break;
 
 	default:
@@ -1471,6 +1481,8 @@ send_command_result_response(int *sock,
 {
 	int ret = SPP_RET_NG;
 	char *msg, *tmp_buff;
+	int *capture_request = NULL;
+
 	tmp_buff = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);
 	if (unlikely(tmp_buff == NULL)) {
 		RTE_LOG(ERR, SPP_COMMAND_PROC,
@@ -1510,6 +1522,20 @@ send_command_result_response(int *sock,
 					"Failed to make status response.\n");
 			return;
 		}
+	}
+
+	/* pcap start command */
+	if (request->is_requested_start) {
+		spp_get_mng_data_addr(NULL, NULL, NULL, NULL,
+				&capture_request, NULL, NULL);
+		*capture_request = SPP_CAPTURE_RUNNING;
+	}
+
+	/* pcap stop command */
+	if (request->is_requested_stop) {
+		spp_get_mng_data_addr(NULL, NULL, NULL, NULL,
+				&capture_request, NULL, NULL);
+		*capture_request = SPP_CAPTURE_IDLE;
 	}
 
 	msg = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);

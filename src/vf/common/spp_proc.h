@@ -77,6 +77,12 @@
 #define CORE_TYPE_FORWARD_STR	     "forward"
 #define CORE_TYPE_MIRROR_STR	     "mirror"
 
+/* State on capture */
+enum spp_capture_status {
+	SPP_CAPTURE_IDLE,      /* Idling */
+	SPP_CAPTURE_RUNNING     /* Running */
+};
+
 /* State on component */
 enum spp_core_status {
 	SPP_CORE_UNUSE,        /**< Not used */
@@ -137,8 +143,8 @@ enum SPP_LONGOPT_RETVAL {
 	 * Return value definition for getopt_long()
 	 * Only for long option
 	 */
-	SPP_LONGOPT_RETVAL_CLIENT_ID,   /* --client-id    */
-	SPP_LONGOPT_RETVAL_VHOST_CLIENT /* --vhost-client */
+	SPP_LONGOPT_RETVAL_CLIENT_ID,      /* --client-id       */
+	SPP_LONGOPT_RETVAL_VHOST_CLIENT,   /* --vhost-client    */
 };
 
 /* Flag of processing type to copy management information */
@@ -148,11 +154,13 @@ enum copy_mng_flg {
 	COPY_MNG_FLG_ALLCOPY,
 };
 
-/* secondary process type used only from spp_vf and spp_mirror */
+/* secondary process type used only from spp_vf and spp_mirror and spp_pcap */
 enum secondary_type {
 	SECONDARY_TYPE_NONE,
 	SECONDARY_TYPE_VF,
 	SECONDARY_TYPE_MIRROR,
+	SECONDARY_TYPE_PCAP,
+	SECONDARY_TYPE_TERMINATE
 };
 
 /**

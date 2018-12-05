@@ -20,6 +20,8 @@
 #define SPP_COMMAND_EXIT_STR            "exit"
 #define SPP_COMMAND_COMPONENT_STR       "component"
 #define SPP_COMMAND_PORT_STR            "port"
+#define SPP_COMMAND_START_STR           "start"
+#define SPP_COMMAND_STOP_STR            "stop"
 
 /* classifiler_type string */
 #define SPP_CLASSIFLER_NONE_STR         "none"
@@ -1025,8 +1027,8 @@ struct decode_command_list {
 				/* Pointer to command handling function */
 };
 
-/* command list */
-static struct decode_command_list command_list[] = {
+/* command list vf and mirror */
+static struct decode_command_list command_list_vf_mirror[] = {
 	{ SPP_COMMAND_CLASSFIER_TABLE_STR, 5, 5,
 		decode_command_parameter_cls_table  },
 						/* classifier_table(mac)  */
@@ -1043,6 +1045,25 @@ static struct decode_command_list command_list[] = {
 	{ "",				 0, 0, NULL }  /* termination     */
 };
 
+/* command list pcap */
+static struct decode_command_list command_list_pcap[] = {
+	{ SPP_COMMAND_GET_CLIENT_ID_STR, 1, 1, NULL }, /* _get_client_id  */
+	{ SPP_COMMAND_STATUS_STR,	 1, 1, NULL }, /* status          */
+	{ SPP_COMMAND_EXIT_STR,		 1, 1, NULL }, /* exit            */
+	{ SPP_COMMAND_START_STR,         1, 1, NULL }, /* start           */
+	{ SPP_COMMAND_STOP_STR,          1, 1, NULL }, /* stop            */
+	{ "",				 0, 0, NULL }  /* termination     */
+};
+
+/* command list */
+static struct
+decode_command_list *command_list[SECONDARY_TYPE_TERMINATE] = {
+	NULL,                   /* none   */
+	command_list_vf_mirror, /* vf     */
+	command_list_vf_mirror, /* mirror */
+	command_list_pcap       /* pcap   */
+};
+
 /* Decode command line parameters */
 static int
 decode_command_in_list(struct spp_command_request *request,
@@ -1051,13 +1072,19 @@ decode_command_in_list(struct spp_command_request *request,
 {
 	int ret = SPP_RET_OK;
 	int command_name_check = 0;
+	struct decode_command_list *list_secondary = NULL;
 	struct decode_command_list *list = NULL;
 	int i = 0;
 	int argc = 0;
 	char *argv[SPP_CMD_MAX_PARAMETERS];
 	char tmp_str[SPP_CMD_MAX_PARAMETERS*SPP_CMD_VALUE_BUFSZ];
+	struct startup_param *p_startup_param;
 	memset(argv, 0x00, sizeof(argv));
 	memset(tmp_str, 0x00, sizeof(tmp_str));
+
+	spp_get_mng_data_addr(&p_startup_param,
+			      NULL, NULL, NULL, NULL, NULL, NULL);
+	list_secondary = command_list[p_startup_param->secondary_type];
 
 	strcpy(tmp_str, request_str);
 	ret = decode_parameter_value(tmp_str, SPP_CMD_MAX_PARAMETERS,
@@ -1069,8 +1096,8 @@ decode_command_in_list(struct spp_command_request *request,
 	}
 	RTE_LOG(DEBUG, SPP_COMMAND_PROC, "Decode array. num=%d\n", argc);
 
-	for (i = 0; command_list[i].name[0] != '\0'; i++) {
-		list = &command_list[i];
+	for (i = 0; list_secondary[i].name[0] != '\0'; i++) {
+		list = &list_secondary[i];
 		if (strcmp(argv[0], list->name) != 0)
 			continue;
 
@@ -1133,6 +1160,12 @@ spp_command_decode_request(
 			break;
 		case SPP_CMDTYPE_EXIT:
 			request->is_requested_exit = 1;
+			break;
+		case SPP_CMDTYPE_START:
+			request->is_requested_start = 1;
+			break;
+		case SPP_CMDTYPE_STOP:
+			request->is_requested_stop = 1;
 			break;
 		default:
 			/* nothing to do */

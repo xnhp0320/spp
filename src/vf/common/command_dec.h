@@ -81,6 +81,13 @@ enum spp_command_type {
 
 	/** port command */
 	SPP_CMDTYPE_PORT,
+
+	/** start command(pcap) */
+	SPP_CMDTYPE_START,
+
+	/** stop command(pcap) */
+	SPP_CMDTYPE_STOP,
+
 };
 
 /** "classifier_table" command specific parameters */
@@ -168,6 +175,8 @@ struct spp_command_request {
 	int is_requested_client_id;     /**< Id for get_client_id command */
 	int is_requested_status;        /**< Id for status command */
 	int is_requested_exit;          /**< Id for exit command */
+	int is_requested_start;         /**< Id for start command */
+	int is_requested_stop;          /**< Id for stop command */
 };
 
 /** decode error information */

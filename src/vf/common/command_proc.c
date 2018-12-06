@@ -106,6 +106,17 @@ const char *CLASSIFILER_TYPE_STATUS_STRINGS[] = {
 	/* termination */ "",
 };
 
+/*
+ * caputure status string list
+ * do it same the order enum spp_capture_status (spp_proc.h)
+ */
+const char *CAPTURE_STATUS_STRINGS[] = {
+	"idle",
+	"running",
+
+	/* termination */ "",
+};
+
 /* get client id */
 static int
 spp_get_client_id(void)
@@ -518,6 +529,12 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 						core->id[cnt],
 						params);
 #endif /* SPP_MIRROR_MODULE */
+#ifdef SPP_PCAP_MODULE
+			ret = spp_pcap_get_component_status(
+						lcore_id,
+						core->id[cnt],
+						params);
+#endif /* SPP_PCAP_MODULE */
 			if (unlikely(ret != 0)) {
 				RTE_LOG(ERR, APP, "Cannot iterate core "
 						"information. "
@@ -884,6 +901,22 @@ append_error_details_value(const char *name, char **output, void *tmp)
 	return ret;
 }
 
+#ifdef SPP_PCAP_MODULE
+/* append a capture status for JSON format */
+static int
+append_capture_status_value(const char *name, char **output,
+		void *tmp __attribute__ ((unused)))
+{
+	int *capture_status = NULL;
+
+	spp_get_mng_data_addr(NULL, NULL, NULL, NULL, NULL,
+			      &capture_status, NULL);
+
+	return append_json_str_value(name, output,
+			CAPTURE_STATUS_STRINGS[*capture_status]);
+}
+#endif /* SPP_PCAP_MODULE */
+
 /* append a client id for JSON format */
 static int
 append_client_id_value(const char *name, char **output,
@@ -934,6 +967,13 @@ append_interface_value(const char *name, char **output,
 		void *tmp __attribute__ ((unused)))
 {
 	int ret = SPP_RET_NG;
+	struct startup_param *startup_param;
+
+	spp_get_mng_data_addr(&startup_param,
+				NULL, NULL, NULL, NULL, NULL, NULL);
+	if (startup_param->secondary_type == SECONDARY_TYPE_PCAP)
+		return SPP_RET_OK;
+
 	char *tmp_buff = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);
 	if (unlikely(tmp_buff == NULL)) {
 		RTE_LOG(ERR, SPP_COMMAND_PROC,
@@ -1146,6 +1186,57 @@ append_core_element_value(
 	return ret;
 }
 
+/* append one element of core information for JSON format (packet capture) */
+static int
+append_pcap_core_element_value(
+		struct spp_iterate_core_params *params,
+		const unsigned int lcore_id,
+		const char *name, const char *type,
+		const int num_rx,
+		const struct spp_port_index *rx_ports,
+		const int num_tx __attribute__ ((unused)),
+		const struct spp_port_index *tx_ports __attribute__ ((unused)))
+{
+	int ret = SPP_RET_NG;
+	int unuse_flg = 0;
+	char *buff, *tmp_buff;
+	buff = params->output;
+
+	/* there is not necessary data when "unuse" by type */
+	unuse_flg = strcmp(type, SPP_TYPE_UNUSE_STR);
+	if (unuse_flg)
+		return SPP_RET_OK;
+
+	tmp_buff = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);
+	if (unlikely(tmp_buff == NULL)) {
+		RTE_LOG(ERR, SPP_COMMAND_PROC,
+				"allocate error. (name = %s)\n",
+				name);
+		return ret;
+	}
+
+	ret = append_json_uint_value("core", &tmp_buff, lcore_id);
+	if (unlikely(ret < SPP_RET_OK))
+		return ret;
+
+	ret = append_json_str_value("role", &tmp_buff, type);
+	if (unlikely(ret < SPP_RET_OK))
+		return ret;
+
+	if (num_rx != 0)
+		ret = append_port_array("rx_port", &tmp_buff,
+				num_rx, rx_ports, SPP_PORT_RXTX_RX);
+	else
+		ret = append_json_str_value("filename", &tmp_buff, name);
+	if (unlikely(ret < 0))
+		return ret;
+
+	ret = append_json_block_brackets("", &buff, tmp_buff);
+	spp_strbuf_free(tmp_buff);
+	params->output = buff;
+	return ret;
+}
+
 /* append a list of core information for JSON format */
 static int
 append_core_value(const char *name, char **output,
@@ -1153,6 +1244,8 @@ append_core_value(const char *name, char **output,
 {
 	int ret = SPP_RET_NG;
 	struct spp_iterate_core_params itr_params;
+	struct startup_param *startup_param;
+
 	char *tmp_buff = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);
 	if (unlikely(tmp_buff == NULL)) {
 		RTE_LOG(ERR, SPP_COMMAND_PROC,
@@ -1161,8 +1254,13 @@ append_core_value(const char *name, char **output,
 		return SPP_RET_NG;
 	}
 
+	spp_get_mng_data_addr(&startup_param,
+			NULL, NULL, NULL, NULL, NULL, NULL);
+
 	itr_params.output = tmp_buff;
 	itr_params.element_proc = append_core_element_value;
+	if (startup_param->secondary_type == SECONDARY_TYPE_PCAP)
+		itr_params.element_proc = append_pcap_core_element_value;
 
 	ret = spp_iterate_core_info(&itr_params);
 	if (unlikely(ret != SPP_RET_OK)) {
@@ -1330,17 +1428,36 @@ struct command_response_list response_result_list[] = {
 };
 
 /* command response status information string list */
+#ifdef SPP_VF_MODULE
 struct command_response_list response_info_list[] = {
 	{ "client-id",        append_client_id_value },
 	{ "phy",              append_interface_value },
 	{ "vhost",            append_interface_value },
 	{ "ring",             append_interface_value },
 	{ "core",             append_core_value },
-#ifdef SPP_VF_MODULE
 	{ "classifier_table", append_classifier_table_value },
-#endif /* SPP_VF_MODULE */
 	COMMAND_RESP_TAG_LIST_EMPTY
 };
+#endif /* SPP_VF_MODULE */
+#ifdef SPP_MIRROR_MODULE
+struct command_response_list response_info_list[] = {
+	{ "client-id",        append_client_id_value },
+	{ "phy",              append_interface_value },
+	{ "vhost",            append_interface_value },
+	{ "ring",             append_interface_value },
+	{ "core",             append_core_value },
+	COMMAND_RESP_TAG_LIST_EMPTY
+};
+#endif /* SPP_MIRROR_MODULE */
+#ifdef SPP_PCAP_MODULE
+struct command_response_list response_info_list[] = {
+	{ "client-id",        append_client_id_value },
+	{ "ring",             append_interface_value },
+	{ "status",           append_capture_status_value },
+	{ "core",             append_core_value },
+	COMMAND_RESP_TAG_LIST_EMPTY
+};
+#endif /* SPP_PCAP_MODULE */
 
 /* append a list of command results for JSON format. */
 static int

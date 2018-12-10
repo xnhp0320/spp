@@ -145,6 +145,8 @@ enum SPP_LONGOPT_RETVAL {
 	 */
 	SPP_LONGOPT_RETVAL_CLIENT_ID,      /* --client-id       */
 	SPP_LONGOPT_RETVAL_VHOST_CLIENT,   /* --vhost-client    */
+	SPP_LONGOPT_RETVAL_OUTPUT,         /* --output          */
+	SPP_LONGOPT_RETVAL_LIMIT_FILE_SIZE /* --limit_file_size */
 };
 
 /* Flag of processing type to copy management information */

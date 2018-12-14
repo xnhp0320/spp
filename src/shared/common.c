@@ -514,7 +514,8 @@ dev_attach_by_devargs(const char *devargs, uint16_t *port_id)
 	if (rte_devargs_parse(&da, devargs))
 		return -1;
 
-	ret = rte_eal_hotplug_add(da.bus->name, da.name, da.args);
+	RTE_LOG(INFO, APP, "devargs=%s\n", devargs);
+	ret = rte_dev_probe(devargs);
 	if (ret < 0) {
 		free(da.args);
 		return ret;
@@ -556,7 +557,9 @@ dev_detach_by_port_id(uint16_t port_id)
 	if (bus == NULL)
 		return -ENOENT;
 
-	ret = rte_eal_hotplug_remove(bus->name, dev->name);
+	//ret = rte_eal_hotplug_remove(bus->name, dev->name);
+	rte_eth_dev_close(port_id);
+	ret = rte_dev_remove(dev);
 	if (ret < 0)
 		return ret;
 

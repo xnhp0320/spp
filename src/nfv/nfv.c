@@ -308,13 +308,18 @@ do_del(char *res_uid)
 		if (port_id == PORT_RESET)
 			return -1;
 
+		dev_detach_by_port_id(port_id);
+
 	} else if (!strcmp(p_type, "ring")) {
 		RTE_LOG(DEBUG, APP, "Del ring id %d\n", p_id);
+		RTE_LOG(INFO, APP, "Del ring id %d\n", p_id);
 		port_id = find_port_id(p_id, RING);
+		RTE_LOG(INFO, APP, "Del port id %d\n", port_id);
 		if (port_id == PORT_RESET)
 			return -1;
 
-		dev_detach_by_port_id(port_id);
+		rte_eth_dev_stop(port_id);
+		rte_eth_dev_close(port_id);
 
 	} else if (!strcmp(p_type, "pcap")) {
 		port_id = find_port_id(p_id, PCAP);
@@ -400,11 +405,24 @@ add_ring_pmd(int ring_id)
 	RTE_LOG(INFO, APP, "Looked up ring '%s'\n", rx_queue_name);
 
 	/* create ring pmd*/
-	res = rte_eth_from_ring(ring);
-	if (res < 0) {
-		RTE_LOG(ERR, APP,
-			"Cannot create eth dev with rte_eth_from_ring()\n");
-		return -1;
+	/* 1201 add */
+	uint16_t port_id = 65535;
+	char name[RTE_ETH_NAME_MAX_LEN];
+	snprintf(name, RTE_ETH_NAME_MAX_LEN - 1, "net_ring_%s", ring->name);
+	RTE_LOG(INFO, APP, "name=%s\n", name);
+	res = rte_eth_dev_get_port_by_name(name, &port_id);
+	RTE_LOG(INFO, APP, "res=%d port_id=%d\n", res, port_id);
+	if (port_id == 65535) {
+		res = rte_eth_from_ring(ring);
+		if (res < 0) {
+			RTE_LOG(ERR, APP,
+				"Cannot create eth dev with "
+				"rte_eth_from_ring()\n");
+			return -1;
+		}
+	} else {
+		res = port_id;
+		rte_eth_dev_start(res);
 	}
 	RTE_LOG(INFO, APP, "Created ring PMD: %d\n", res);
 
@@ -927,6 +945,7 @@ main(int argc, char *argv[])
 	if (ret < 0)
 		return -1;
 
+	rte_log_set_level(RTE_LOGTYPE_EAL, RTE_LOG_DEBUG);
 	argc -= ret;
 	argv += ret;
 
@@ -993,6 +1012,7 @@ main(int argc, char *argv[])
 		if (ret < 0)
 			continue;
 
+		RTE_LOG_DP(DEBUG, APP, "Received string: %s\n", str);
 		RTE_LOG(DEBUG, APP, "Received string: %s\n", str);
 
 		flg_exit = parse_command(str);

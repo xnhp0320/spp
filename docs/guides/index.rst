@@ -12,6 +12,7 @@ SPP documentation
    commands/index
    tools/index
    spp_vf/index
+   spp_pcap/index
    spp-ctl/index
 
 This documentation is the latest tagged version, but some of the latest

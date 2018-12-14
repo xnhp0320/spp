@@ -10,3 +10,4 @@ Secondary Commands
    spp_nfv
    spp_vf
    spp_mirror
+   spp_pcap

@@ -400,3 +400,12 @@ Then, stop components.
     spp > vf 1; component stop forwarder7
     spp > vf 1; component stop forwarder8
     spp > vf 1; component stop merger2
+
+Exit spp_vf
+-----------
+
+Terminate spp_vf.
+
+.. code-block:: console
+
+    spp > vf 1; exit

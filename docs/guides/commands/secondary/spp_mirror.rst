@@ -218,3 +218,12 @@ Here is an example.
 
     # delete tx port 'vhost:1' from 'mr1'
     spp > mirror 2; port del vhost:1 tx mr1
+
+exit
+----
+
+Terminate the spp_mirror.
+
+.. code-block:: console
+
+    spp > mirror 2; exit

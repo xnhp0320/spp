@@ -346,3 +346,12 @@ Delete an entryThis is an example to delete an entry for port ``ring:0``.
 
     # delete entry with VLAN tag
     spp > vf 1; classifier_table del vlan 101 52:54:00:01:00:01 ring:0
+
+exit
+----
+
+Terminate the spp_vf.
+
+.. code-block:: console
+
+    spp > vf 1; exit

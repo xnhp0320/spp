@@ -268,3 +268,12 @@ Add port from classifier_mac1 to VM1.
 
     # Add port from classifier_mac1 to VM1.
     spp > vf 1; port add ring:0 rx forwarder1
+
+Exit spp_mirror
+~~~~~~~~~~~~~~~
+
+Terminate spp_mirror.
+
+.. code-block:: console
+
+    spp > mirror 1; exit

@@ -85,6 +85,12 @@ and launch ``spp_vf`` with core list ``-l 0,2-14`` in this usecase.
        -s 127.0.0.1:6666 \
        --vhost-client
 
+Start CLI.
+
+.. code-block:: console
+
+   $ python src/spp.py
+
 Start components in ``spp_vf``.
 
 .. code-block:: console
@@ -174,7 +180,7 @@ Start mirror component with core ID 15.
 .. code-block:: console
 
     # Start component of spp_mirror on coreID 15
-    spp > sec 2; component start mirror1 15 mirror
+    spp > mirror 2; component start mirror1 15 mirror
 
 Add ``ring:0`` as rx ports and add ``ring:8`` and ``ring:9`` as tx port
 to mirror.

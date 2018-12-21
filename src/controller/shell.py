@@ -10,6 +10,7 @@ from .commands import nfv
 from .commands import topo
 from .commands import vf
 from .commands import mirror
+from .commands import pcap
 import os
 import re
 import readline
@@ -71,6 +72,10 @@ class Shell(cmd.Cmd, object):
             self.secondaries['mirror'][sec_id] = mirror.SppMirror(
                     self.spp_ctl_cli, sec_id)
 
+        self.spp_pcaps = {}
+        for sec_id in self.get_sec_ids('pcap'):
+            self.spp_pcaps[sec_id] = pcap.SppPcap(self.spp_ctl_cli, sec_id)
+
     def default(self, line):
         """Define defualt behaviour.
 
@@ -95,7 +100,7 @@ class Shell(cmd.Cmd, object):
     def get_sec_ids(self, ptype):
         """Return a list of IDs of running secondary processes.
 
-        'ptype' is 'nfv', 'vf' or 'mirror'.
+        'ptype' is 'nfv', 'vf' or 'mirror' or 'pcap'.
         """
 
         ids = []
@@ -137,6 +142,7 @@ class Shell(cmd.Cmd, object):
                 sec_obj['nfv'] = []
                 sec_obj['vf'] = []
                 sec_obj['mirror'] = []
+                sec_obj['pcap'] = []
 
                 for proc_obj in proc_objs:
                     if proc_obj['type'] == 'primary':
@@ -153,7 +159,7 @@ class Shell(cmd.Cmd, object):
                 print('- secondary:')
                 print('  - processes:')
                 cnt = 1
-                for pt in ['nfv', 'vf', 'mirror']:
+                for pt in ['nfv', 'vf', 'mirror', 'pcap']:
                     for obj in sec_obj[pt]:
                         print('    %d: %s:%s' %
                               (cnt, obj['type'], obj['client-id']))
@@ -520,6 +526,81 @@ class Shell(cmd.Cmd, object):
 
                 return self.secondaries['mirror'][idx].complete(
                         self.get_sec_ids('mirror'), text, line, begidx, endidx)
+
+    def do_pcap(self, cmd):
+        """Send a command to spp_pcap.
+
+        spp_pcap is a secondary process for duplicating incoming
+        packets to be used as similar to TaaS in OpenStack. This
+        command has four sub commands.
+          * status
+          * start
+          * stop
+          * exit
+
+        Each of sub commands other than 'status' takes several parameters
+        for detailed operations. Notice that 'start' for launching a worker
+        is replaced with 'stop' for terminating. 'exit' for spp_pcap
+        terminating.
+
+        Examples:
+
+        # (1) show status of worker threads and resources
+        spp > pcap 1; status
+
+        # (2) launch capture thread
+        spp > pcap 1; start
+
+        # (3) terminate capture thread
+        spp > pcap 1; stop
+
+        # (4) terminate spp_pcap secondaryd
+        spp > pcap 1; exit
+        """
+
+        # remove unwanted spaces to avoid invalid command error
+        tmparg = self.clean_cmd(cmd)
+        cmds = tmparg.split(';')
+        if len(cmds) < 2:
+            print("Required an ID and ';' before the command.")
+        elif str.isdigit(cmds[0]):
+            self.spp_pcaps[int(cmds[0])].run(cmds[1])
+        else:
+            print('Invalid command: %s' % tmparg)
+
+    def complete_pcap(self, text, line, begidx, endidx):
+        """Completion for pcap command"""
+
+        line = self.clean_cmd(line)
+
+        tokens = line.split(';')
+        if len(tokens) == 1:
+            # Add SppPcap of sec_id if it is not exist
+            sec_ids = self.get_sec_ids('pcap')
+            for idx in sec_ids:
+                if self.spp_pcaps[idx] is None:
+                    self.spp_pcaps[idx] = pcap.SppPcap(self.spp_ctl_cli, idx)
+
+            if len(line.split()) == 1:
+                res = [str(i)+';' for i in sec_ids]
+            else:
+                if not (';' in line):
+                    res = [str(i)+';'
+                           for i in sec_ids
+                           if (str(i)+';').startswith(text)]
+            return res
+        elif len(tokens) == 2:
+            # Split tokens like as from 'pcap 1' to ['pcap', '1']
+            first_tokens = tokens[0].split(' ')
+            if len(first_tokens) == 2:
+                idx = int(first_tokens[1])
+
+                # Add SppPcap of sec_id if it is not exist
+                if self.spp_pcaps[idx] is None:
+                    self.spp_pcaps[idx] = pcap.SppPcap(self.spp_ctl_cli, idx)
+
+                return self.spp_pcaps[idx].complete(
+                        self.get_sec_ids('pcap'), text, line, begidx, endidx)
 
     def do_record(self, fname):
         """Save commands as a recipe file.

@@ -35,7 +35,8 @@ do_del(char *res_uid)
 		if (port_id == PORT_RESET)
 			return -1;
 
-		dev_detach_by_port_id(port_id);
+		rte_eth_dev_stop(port_id);
+		rte_eth_dev_close(port_id);
 
 	} else if (!strcmp(p_type, "pcap")) {
 		port_id = find_port_id(p_id, PCAP);

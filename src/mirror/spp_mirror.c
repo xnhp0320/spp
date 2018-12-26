@@ -681,8 +681,11 @@ main(int argc, char *argv[])
 			ret_do = spp_command_proc_do();
 			if (unlikely(ret_do != SPP_RET_OK))
 				break;
-
-			sleep(1);
+			/*
+			 * To avoid making CPU busy, this thread waits
+			 * here for 100 ms.
+			 */
+			usleep(100);
 
 #ifdef SPP_RINGLATENCYSTATS_ENABLE
 			print_ring_latency_stats();

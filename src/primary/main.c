@@ -13,6 +13,10 @@
 #include "common.h"
 #include "init.h"
 
+/* Buffer sizes of status message of primary. Total must be equal to MSG_SIZE */
+#define PRI_BUF_SIZE_PHY 512
+#define PRI_BUF_SIZE_RING 1512
+
 static sig_atomic_t on = 1;
 
 static enum cmd_type cmd = STOP;

@@ -28,35 +28,42 @@
 #include <rte_mempool.h>
 #include <rte_ring.h>
 
-#define MAX_CLIENT  99
 #define MSG_SIZE 2048  /* socket buffer len */
+
 #define SOCK_RESET  -1
 #define PORT_RESET  UINT16_MAX
 
-/* Buffer sizes of status message of primary. Total must be equal to MSG_SIZE */
-#define PRI_BUF_SIZE_PHY 512
-#define PRI_BUF_SIZE_RING 1512
+// Maximum number of rings.
+#define MAX_CLIENT  99
+
+// The number of tokens in a command line.
+#define MAX_PARAMETER 10
+
+#define NO_FLAGS 0
 
 /*
  * When doing reads from the NIC or the client queues,
  * use this batch size
  */
-#define PACKET_READ_SIZE 32
+//#define PACKET_READ_SIZE 32
+
+/*
+ * TODO(yasufum) move it from common.h used only for spp_nfv, spp_vf and
+ * spp_mirror.
+ */
 #define MAX_PKT_BURST 32
 
-#define MAX_PARAMETER 10
-
+// TODO(yasufum) move it from common.h used only for primary and spp_vm.
 #define MBUFS_PER_CLIENT 1536
 #define MBUFS_PER_PORT 1536
 #define MBUF_CACHE_SIZE 512
+
 #define MBUF_OVERHEAD (sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define RX_MBUF_DATA_SIZE 2048
 #define MBUF_SIZE (RX_MBUF_DATA_SIZE + MBUF_OVERHEAD)
 
 #define RTE_MP_RX_DESC_DEFAULT 512
 #define RTE_MP_TX_DESC_DEFAULT 512
-
-#define NO_FLAGS 0
 
 /* Command. */
 enum cmd_type {

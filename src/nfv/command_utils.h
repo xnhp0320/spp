@@ -8,6 +8,9 @@
 #include "common.h"
 #include "nfv.h"
 
+// The number of receive descriptors to allocate for the receive ring.
+#define NR_DESCS 128
+
 static void
 forward_array_init_one(unsigned int i)
 {
@@ -62,6 +65,57 @@ is_valid_port(uint16_t port_id)
 }
 
 /*
+ * Return actual port ID which is assigned by system internally, or PORT_RESET
+ * if port is not found.
+ */
+static uint16_t
+find_port_id(int id, enum port_type type)
+{
+	uint16_t port_id = PORT_RESET;
+	uint16_t i;
+
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (port_map[i].port_type != type)
+			continue;
+
+		if (port_map[i].id == id) {
+			port_id = i;
+			break;
+		}
+	}
+
+	return port_id;
+}
+
+/* Return -1 as an error if given patch is invalid */
+static int
+add_patch(uint16_t in_port, uint16_t out_port)
+{
+	if (!is_valid_port(in_port) || !is_valid_port(out_port))
+		return -1;
+
+	/* Populate in port data */
+	ports_fwd_array[in_port].in_port_id = in_port;
+	ports_fwd_array[in_port].rx_func = &rte_eth_rx_burst;
+	ports_fwd_array[in_port].tx_func = &rte_eth_tx_burst;
+	ports_fwd_array[in_port].out_port_id = out_port;
+
+	/* Populate out port data */
+	ports_fwd_array[out_port].in_port_id = out_port;
+	ports_fwd_array[out_port].rx_func = &rte_eth_rx_burst;
+	ports_fwd_array[out_port].tx_func = &rte_eth_tx_burst;
+
+	RTE_LOG(DEBUG, APP, "STATUS: in port %d in_port_id %d\n", in_port,
+		ports_fwd_array[in_port].in_port_id);
+	RTE_LOG(DEBUG, APP, "STATUS: in port %d patch out port id %d\n",
+		in_port, ports_fwd_array[in_port].out_port_id);
+	RTE_LOG(DEBUG, APP, "STATUS: outport %d in_port_id %d\n", out_port,
+		ports_fwd_array[out_port].in_port_id);
+
+	return 0;
+}
+
+/*
  * Create an empty rx pcap file to given path if it does not exit
  * Return 0 for succeeded, or -1 for failed.
  */
@@ -97,6 +151,249 @@ create_pcap_rx(char *rx_fpath)
 	RTE_LOG(INFO, APP, "PCAP device created\n");
 	fclose(tmp_fp);
 	return 0;
+}
+
+/*
+ * Create ring PMD with given ring_id.
+ */
+static int
+add_ring_pmd(int ring_id)
+{
+	struct rte_ring *ring;
+	int res;
+	char rx_queue_name[32];  /* Prefix and number like as 'eth_ring_0' */
+
+	memset(rx_queue_name, '\0', sizeof(rx_queue_name));
+	sprintf(rx_queue_name, "%s", get_rx_queue_name(ring_id));
+
+	/* Look up ring with provided ring_id */
+	ring = rte_ring_lookup(rx_queue_name);
+	if (ring == NULL) {
+		RTE_LOG(ERR, APP,
+			"Failed to get RX ring %s - is primary running?\n",
+			rx_queue_name);
+		return -1;
+	}
+	RTE_LOG(INFO, APP, "Looked up ring '%s'\n", rx_queue_name);
+
+	/* create ring pmd*/
+	res = rte_eth_from_ring(ring);
+	if (res < 0) {
+		RTE_LOG(ERR, APP,
+			"Cannot create eth dev with rte_eth_from_ring()\n");
+		return -1;
+	}
+	RTE_LOG(INFO, APP, "Created ring PMD: %d\n", res);
+
+	return res;
+}
+
+static int
+add_vhost_pmd(int index)
+{
+	struct rte_eth_conf port_conf = {
+		.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+	};
+	struct rte_mempool *mp;
+	uint16_t vhost_port_id;
+	int nr_queues = 1;
+	const char *name;
+	char devargs[64];
+	char *iface;
+	uint16_t q;
+	int ret;
+
+	mp = rte_mempool_lookup(PKTMBUF_POOL_NAME);
+	if (mp == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot get mempool for mbufs\n");
+
+	/* eth_vhost0 index 0 iface /tmp/sock0 on numa 0 */
+	name = get_vhost_backend_name(index);
+	iface = get_vhost_iface_name(index);
+
+	sprintf(devargs, "%s,iface=%s,queues=%d", name, iface, nr_queues);
+	ret = dev_attach_by_devargs(devargs, &vhost_port_id);
+	if (ret < 0)
+		return ret;
+
+	ret = rte_eth_dev_configure(vhost_port_id, nr_queues, nr_queues,
+		&port_conf);
+	if (ret < 0)
+		return ret;
+
+	/* Allocate and set up 1 RX queue per Ethernet port. */
+	for (q = 0; q < nr_queues; q++) {
+		ret = rte_eth_rx_queue_setup(vhost_port_id, q, NR_DESCS,
+			rte_eth_dev_socket_id(vhost_port_id), NULL, mp);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* Allocate and set up 1 TX queue per Ethernet port. */
+	for (q = 0; q < nr_queues; q++) {
+		ret = rte_eth_tx_queue_setup(vhost_port_id, q, NR_DESCS,
+			rte_eth_dev_socket_id(vhost_port_id), NULL);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* Start the Ethernet port. */
+	ret = rte_eth_dev_start(vhost_port_id);
+	if (ret < 0)
+		return ret;
+
+	RTE_LOG(DEBUG, APP, "vhost port id %d\n", vhost_port_id);
+
+	return vhost_port_id;
+}
+
+/*
+ * Open pcap files with given index for rx and tx.
+ * Index is given as a argument of 'patch' command.
+ * This function returns a port ID if it is succeeded,
+ * or negative int if failed.
+ */
+static int
+add_pcap_pmd(int index)
+{
+	struct rte_eth_conf port_conf = {
+		.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+	};
+
+	struct rte_mempool *mp;
+	const char *name;
+	char devargs[256];
+	uint16_t pcap_pmd_port_id;
+	uint16_t nr_queues = 1;
+	int ret;
+
+	// PCAP file path
+	char rx_fpath[128];
+	char tx_fpath[128];
+
+	FILE *rx_fp;
+
+	sprintf(rx_fpath, PCAP_IFACE_RX, index);
+	sprintf(tx_fpath, PCAP_IFACE_TX, index);
+
+	// create rx pcap file if it does not exist
+	rx_fp = fopen(rx_fpath, "r");
+	if (rx_fp == NULL) {
+		ret = create_pcap_rx(rx_fpath);
+		if (ret < 0)
+			return ret;
+	}
+
+	mp = rte_mempool_lookup(PKTMBUF_POOL_NAME);
+	if (mp == NULL)
+		rte_exit(EXIT_FAILURE, "Cannon get mempool for mbuf\n");
+
+	name = get_pcap_pmd_name(index);
+	sprintf(devargs,
+			"%s,rx_pcap=%s,tx_pcap=%s",
+			name, rx_fpath, tx_fpath);
+	ret = dev_attach_by_devargs(devargs, &pcap_pmd_port_id);
+
+	if (ret < 0)
+		return ret;
+
+	ret = rte_eth_dev_configure(
+			pcap_pmd_port_id, nr_queues, nr_queues, &port_conf);
+
+	if (ret < 0)
+		return ret;
+
+	/* Allocate and set up 1 RX queue per Ethernet port. */
+	uint16_t q;
+	for (q = 0; q < nr_queues; q++) {
+		ret = rte_eth_rx_queue_setup(
+				pcap_pmd_port_id, q, NR_DESCS,
+				rte_eth_dev_socket_id(pcap_pmd_port_id),
+				NULL, mp);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* Allocate and set up 1 TX queue per Ethernet port. */
+	for (q = 0; q < nr_queues; q++) {
+		ret = rte_eth_tx_queue_setup(
+				pcap_pmd_port_id, q, NR_DESCS,
+				rte_eth_dev_socket_id(pcap_pmd_port_id),
+				NULL);
+		if (ret < 0)
+			return ret;
+	}
+
+	ret = rte_eth_dev_start(pcap_pmd_port_id);
+
+	if (ret < 0)
+		return ret;
+
+	RTE_LOG(DEBUG, APP, "pcap port id %d\n", pcap_pmd_port_id);
+
+	return pcap_pmd_port_id;
+}
+
+static int
+add_null_pmd(int index)
+{
+	struct rte_eth_conf port_conf = {
+			.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+	};
+
+	struct rte_mempool *mp;
+	const char *name;
+	char devargs[64];
+	uint16_t null_pmd_port_id;
+	uint16_t nr_queues = 1;
+
+	int ret;
+
+	mp = rte_mempool_lookup(PKTMBUF_POOL_NAME);
+	if (mp == NULL)
+		rte_exit(EXIT_FAILURE, "Cannon get mempool for mbuf\n");
+
+	name = get_null_pmd_name(index);
+	sprintf(devargs, "%s", name);
+	ret = dev_attach_by_devargs(devargs, &null_pmd_port_id);
+	if (ret < 0)
+		return ret;
+
+	ret = rte_eth_dev_configure(
+			null_pmd_port_id, nr_queues, nr_queues,
+			&port_conf);
+	if (ret < 0)
+		return ret;
+
+	/* Allocate and set up 1 RX queue per Ethernet port. */
+	uint16_t q;
+	for (q = 0; q < nr_queues; q++) {
+		ret = rte_eth_rx_queue_setup(
+				null_pmd_port_id, q, NR_DESCS,
+				rte_eth_dev_socket_id(
+					null_pmd_port_id), NULL, mp);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* Allocate and set up 1 TX queue per Ethernet port. */
+	for (q = 0; q < nr_queues; q++) {
+		ret = rte_eth_tx_queue_setup(
+				null_pmd_port_id, q, NR_DESCS,
+				rte_eth_dev_socket_id(
+					null_pmd_port_id),
+				NULL);
+		if (ret < 0)
+			return ret;
+	}
+
+	ret = rte_eth_dev_start(null_pmd_port_id);
+	if (ret < 0)
+		return ret;
+
+	RTE_LOG(DEBUG, APP, "null port id %d\n", null_pmd_port_id);
+
+	return null_pmd_port_id;
 }
 
 /* initialize forward array with default value*/

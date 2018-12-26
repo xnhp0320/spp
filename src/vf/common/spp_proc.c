@@ -85,9 +85,18 @@ add_ring_pmd(int ring_id)
 	}
 
 	/* Create ring pmd */
-	ring_port_id = rte_eth_from_ring(ring);
-	RTE_LOG(INFO, APP, "ring port add. (no = %d / port = %d)\n",
-			ring_id, ring_port_id);
+	uint16_t port_id = 65535;
+	char name[RTE_ETH_NAME_MAX_LEN];
+	snprintf(name, RTE_ETH_NAME_MAX_LEN - 1, "net_ring_%s", ring->name);
+	ring_port_id = rte_eth_dev_get_port_by_name(name, &port_id);
+	if (port_id == 65535) {
+		ring_port_id = rte_eth_from_ring(ring);
+		RTE_LOG(INFO, APP, "ring port add. (no = %d / port = %d)\n",
+						ring_id, ring_port_id);
+	} else {
+		ring_port_id = port_id;
+		rte_eth_dev_start(ring_port_id);
+	}
 	return ring_port_id;
 }
 

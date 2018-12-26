@@ -29,6 +29,8 @@ do_del(char *res_uid)
 		if (port_id == PORT_RESET)
 			return -1;
 
+		dev_detach_by_port_id(port_id);
+
 	} else if (!strcmp(p_type, "ring")) {
 		RTE_LOG(DEBUG, APP, "Del ring id %d\n", p_id);
 		port_id = find_port_id(p_id, RING);

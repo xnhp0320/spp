@@ -249,7 +249,8 @@ do_del(char *res_uid)
 		if (port_id == PORT_RESET)
 			return -1;
 
-		dev_detach_by_port_id(port_id);
+		rte_eth_dev_stop(port_id);
+		rte_eth_dev_close(port_id);
 	}
 
 	forward_array_remove(port_id);

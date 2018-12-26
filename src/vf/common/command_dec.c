@@ -212,7 +212,7 @@ spp_convert_component_type(const char *type_str)
 }
 
 /* set decode error */
-inline int
+static inline int
 set_decode_error(struct spp_command_decode_error *error,
 		const int error_code, const char *error_name)
 {
@@ -225,7 +225,7 @@ set_decode_error(struct spp_command_decode_error *error,
 }
 
 /* set decode error */
-inline int
+static inline int
 set_string_value_decode_error(struct spp_command_decode_error *error,
 		const char *value, const char *error_name)
 {

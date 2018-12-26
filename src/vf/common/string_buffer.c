@@ -13,14 +13,14 @@
 #define RTE_LOGTYPE_SPP_STRING_BUFF RTE_LOGTYPE_USER1
 
 /* get message buffer capacity */
-inline size_t
+static inline size_t
 strbuf_get_capacity(const char *strbuf)
 {
 	return *((const size_t *)(strbuf - sizeof(size_t)));
 }
 
 /* re-allocate message buffer */
-inline char*
+static inline char*
 strbuf_reallocate(char *strbuf, size_t required_len)
 {
 	size_t new_cap = strbuf_get_capacity(strbuf) * 2;

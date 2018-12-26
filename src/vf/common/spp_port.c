@@ -57,7 +57,7 @@ spp_port_ability_init(void)
 }
 
 /* Get information of port ability. */
-inline void
+extern inline void
 spp_port_ability_get_info(
 		int port_id, enum spp_port_rxtx rxtx,
 		struct spp_port_ability **info)
@@ -365,7 +365,7 @@ port_ability_each_operation(uint16_t port_id,
 }
 
 /* Wrapper function for rte_eth_rx_burst(). */
-inline uint16_t
+extern inline uint16_t
 spp_eth_rx_burst(
 		uint16_t port_id, uint16_t queue_id  __attribute__ ((unused)),
 		struct rte_mbuf **rx_pkts, const uint16_t nb_pkts)
@@ -387,7 +387,7 @@ spp_eth_rx_burst(
 }
 
 /* Wrapper function for rte_eth_tx_burst(). */
-inline uint16_t
+extern inline uint16_t
 spp_eth_tx_burst(
 		uint16_t port_id, uint16_t queue_id  __attribute__ ((unused)),
 		struct rte_mbuf **tx_pkts, uint16_t nb_pkts)

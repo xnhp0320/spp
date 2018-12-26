@@ -177,11 +177,21 @@ add_ring_pmd(int ring_id)
 	RTE_LOG(INFO, APP, "Looked up ring '%s'\n", rx_queue_name);
 
 	/* create ring pmd*/
-	res = rte_eth_from_ring(ring);
-	if (res < 0) {
-		RTE_LOG(ERR, APP,
-			"Cannot create eth dev with rte_eth_from_ring()\n");
-		return -1;
+	uint16_t port_id = 65535;
+	char name[RTE_ETH_NAME_MAX_LEN];
+	snprintf(name, RTE_ETH_NAME_MAX_LEN - 1, "net_ring_%s", ring->name);
+	res = rte_eth_dev_get_port_by_name(name, &port_id);
+	if (port_id == 65535) {
+		res = rte_eth_from_ring(ring);
+		if (res < 0) {
+			RTE_LOG(ERR, APP,
+				"Cannot create eth dev with "
+				"rte_eth_from_ring()\n");
+			return -1;
+		}
+	} else {
+		res = port_id;
+		rte_eth_dev_start(res);
 	}
 	RTE_LOG(INFO, APP, "Created ring PMD: %d\n", res);
 

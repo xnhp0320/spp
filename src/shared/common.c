@@ -595,7 +595,5 @@ dev_detach_by_port_id(uint16_t port_id)
 	if (ret < 0)
 		return ret;
 
-	rte_eth_dev_release_port(&rte_eth_devices[port_id]);
-
 	return 0;
 }

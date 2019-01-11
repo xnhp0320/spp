@@ -6,7 +6,7 @@
 spp_vf
 ======
 
-``spp_vf`` is a kind of SPP secondary process. It it introduced for
+``spp_vf`` is a kind of SPP secondary process. It is introduced for
 providing SR-IOV like features.
 
 Each of ``spp_vf`` processes is managed with ``vf`` command. It is for
@@ -136,7 +136,7 @@ assigned to this thread.
 ``Components`` is a list of all of worker threads. Each of workers has a
 core ID running on, type of the worker and a list of resources.
 Entry of no name with ``unuse`` type means that no worker thread assigned to
-the core. In other words, it is ready to be assinged.
+the core. In other words, it is ready to be assigned.
 
 
 .. _commands_spp_vf_component:
@@ -144,7 +144,7 @@ the core. In other words, it is ready to be assinged.
 component
 ---------
 
-Assing or release a role of forwarding to worker threads running on each of
+Assign or release a role of forwarding to worker threads running on each of
 cores which are reserved with ``-c`` or ``-l`` option while launching
 ``spp_vf``. The role of the worker is chosen from ``forward``, ``merge`` or
 ``classifier_mac``.
@@ -165,7 +165,7 @@ This name is also used while releasing the role.
     # release worker 'NAME' from the role
     spp > vf SEC_ID; component stop NAME
 
-Here is some examples of assigning roles with ``component`` command.
+Here are some examples of assigning roles with ``component`` command.
 
 .. code-block:: console
 
@@ -178,7 +178,18 @@ Here is some examples of assigning roles with ``component`` command.
     # assign 'classifier_mac' role with name 'cls1' on core 4
     spp > vf 2; component start cls1 4 classifier_mac
 
-Or examples of releasing roles.
+In the above examples, each different ``CORE-ID`` is specified to each role.
+You can assign several components on the same core, but performance might be
+decreased. This is an example for assigning two roles of ``forward`` and
+``merge`` on the same ``core 2``.
+
+.. code-block:: console
+
+    # assign two roles on the same 'core 2'.
+    spp > vf 2; component start fw1 2 forward
+    spp > vf 2; component start mgr1 2 merge
+
+Examples of releasing roles.
 
 .. code-block:: console
 
@@ -340,7 +351,7 @@ Here is an example for adding entries.
     # add entry of default with VLAN tag
     spp > vf 1; classifier_table add vlan 101 default ring:1
 
-Delete an entryThis is an example to delete an entry for port ``ring:0``.
+Delete an entry. This is an example to delete an entry with VLAN tag 101.
 
 .. code-block:: console
 

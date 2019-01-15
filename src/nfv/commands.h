@@ -6,6 +6,7 @@
 #ifndef _NFV_COMMANDS_H_
 #define _NFV_COMMANDS_H_
 
+#include "shared/common.h"
 #include "shared/secondary/add_port.h"
 #include "shared/secondary/utils.h"
 
@@ -180,7 +181,10 @@ parse_command(char *str)
 
 	} else if (!strcmp(token_list[0], "_get_client_id")) {
 		memset(str, '\0', MSG_SIZE);
-		sprintf(str, "%d", client_id);
+		sprintf(str, "{%s:%s,%s:%d,%s:%s}",
+				"\"results\"", "[{\"result\":\"success\"}]",
+				"\"client_id\"", client_id,
+				"\"process_type\"", "\"nfv\"");
 
 	} else if (!strcmp(token_list[0], "_set_client_id")) {
 		int id;

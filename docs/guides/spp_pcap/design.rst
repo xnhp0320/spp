@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2010-2014 Intel Corporation
+    Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
 
 .. _spp_pcap_design:
 
@@ -12,17 +12,9 @@ Design
 Design Overview
 ---------------
 
-This section outlines design of ``spp_pcap``.
-
 When launched, ``spp_pcap`` assigns master core as ``receiver`` thread and
-the rest of the cores are assigned ``writer`` thread(s). Writing packets into
-storage takes much cpu power to write packets. If writing is done by only
-one core, then there is a risk of packet be dropped. That is the reason
-why there can be multiple ``writer`` threads. Each ``writer`` thread has
-unique integer number which is used to create capture file name.
-When launched, ``spp_pcap`` connect to the ``port`` which is specified
-in startup parameter. Note that ``vhost`` can not be specified as ``port``.
-When spp_pcap has launched, initially it is not capturing.
+the rest of the cores are assigned for ``writer`` threads.
+You should have enough cores if you need to capture large amount of packets.
 
 With ``start`` command, you can start capturing.
 Incoming packets are received by ``receiver`` thread and it is transferred to
@@ -44,7 +36,8 @@ during started state, stops capturing and then exits the program.
 
 With ``status`` command, status related to ``spp_pcap`` is shown.
 
-The following depicts the internal structure of ``spp_pcap``.
+In :numref:`figure_spp_pcap_design`,
+the internal structure of ``spp_pcap`` is shown.
 
 .. figure:: ../images/spp_pcap/spp_pcap_design.*
     :width: 75%
@@ -52,6 +45,13 @@ The following depicts the internal structure of ``spp_pcap``.
     spp_pcap internal structure
 
 .. _spp_pcap_design_output_file_format:
+
+The figure shows the case when ``spp_pcap`` is connected with ``phy:0``.
+There is only one ``receiver`` thread and multiple ``writer`` threads.
+Each ``writer`` writes packets into file.
+Once exceeds maximum file size ,
+it creates new file so that multiple output files are created.
+
 
 Startup options
 ---------------
@@ -61,34 +61,44 @@ the other is ``spp_pcap``.
 
 ``spp_pcap`` specific options are:
 
- * -client-id: client id which can be seen as secondary ID from spp.py
- * -s: IPv4 address and port for spp-ctl
- * -i: port to which spp_pcap attached with
+ * -client-id: client id which can be seen as secondary ID from spp.py.
+ * -s: IPv4 address and port for spp-ctl.
+ * -i: port to which spp_pcap attached with.
  * --output: Output file path where capture files are written.\
-   When this parameter is omitted,``/tmp`` is used.
+   When this parameter is omitted, ``/tmp`` is used.
+ * --port_name: port_name which can be specified as
+   either of phy:N or \
+   ring:N.
+   When used as part of file name ``:`` is removed to avoid misconversion.
+ * --limit_file_option: Maximum size of a capture file.
+   Default value is ``1GiB``.
 
 The output file format is as following:
 
-    spp_pcap.YYYMMDDhhmmss.[port_name].[write_core_number(1,2...)]
-    .[sequence_number(0,1..)].pcap.lz4
+.. code-block:: none
 
+    spp_pcap.YYYYMMDDhhmmss.[port_name].[wcore_num]
+    wcore_num is write core number which starts with 1
+
+Each ``writer`` thread has
+unique integer number which is used to determine the name of capture file.
 YYYYMMDDhhmmss is the time when ``spp_pcap`` receives ``start`` command.
+This example shows that ``receiver`` thread receives ``start`` command at
+20181108110600.
+Port is ring:0, wcore_num is 1 and sequential number is 2.
 
-The example file name is as follwoing:
+Until writing is finished, packets are stored into temporary file.
+The following is the example.
 
-    /tmp/spp_pcap.20181108110600.ring0.1.2.pcap.lz4
-
-When ``writer`` core is  writing the file, ``.tmp`` extension is appended at
-the end of the file name.
-The example is as following:
+.. code-block:: none
 
     /tmp/spp_pcap.20181108110600.ring0.1.2.pcap.lz4.tmp
 
- * -port_name: port_name which can be specified as either of phy:N or \
-   ring:N.When used as part of file name : is removed to avoid misconversion.
+The example is as following:
 
- * --limit_file_option: When written size to file exceeded this value,
-``spp_pcap`` closes current writing file and then newly open the file with
-incrementing sequence_number and again start writing. When this parameter is
-omitted, ``1073741824(1GB)`` is used. This feature is not aimed to be file
-rotation, captured files are not deleted automatically.
+.. code-block:: none
+
+    /tmp/spp_pcap.20181108110600.ring0.1.2.pcap.lz4.tmp
+
+Captured files are not deleted automatically
+because file rotation is not supported.

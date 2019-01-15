@@ -1,15 +1,21 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018  Nippon Telegraph and Telephone Corporation.
+ * Copyright(c) 2015-2016 Intel Corporation
+ * Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef NFV_COMMAND_UTILS_H
-#define NFV_COMMAND_UTILS_H
+#ifndef _NFV_COMMAND_UTILS_H_
+#define _NFV_COMMAND_UTILS_H_
 
 #include "common.h"
-#include "nfv.h"
+#include "secondary.h"
+
+#define RTE_LOGTYPE_SPP_NFV RTE_LOGTYPE_USER1
 
 // The number of receive descriptors to allocate for the receive ring.
 #define NR_DESCS 128
+
+#define PCAP_IFACE_RX "/tmp/spp-rx%d.pcap"
+#define PCAP_IFACE_TX "/tmp/spp-tx%d.pcap"
 
 static void
 forward_array_init_one(unsigned int i)
@@ -105,11 +111,11 @@ add_patch(uint16_t in_port, uint16_t out_port)
 	ports_fwd_array[out_port].rx_func = &rte_eth_rx_burst;
 	ports_fwd_array[out_port].tx_func = &rte_eth_tx_burst;
 
-	RTE_LOG(DEBUG, APP, "STATUS: in port %d in_port_id %d\n", in_port,
+	RTE_LOG(DEBUG, SPP_NFV, "STATUS: in port %d in_port_id %d\n", in_port,
 		ports_fwd_array[in_port].in_port_id);
-	RTE_LOG(DEBUG, APP, "STATUS: in port %d patch out port id %d\n",
+	RTE_LOG(DEBUG, SPP_NFV, "STATUS: in port %d patch out port id %d\n",
 		in_port, ports_fwd_array[in_port].out_port_id);
-	RTE_LOG(DEBUG, APP, "STATUS: outport %d in_port_id %d\n", out_port,
+	RTE_LOG(DEBUG, SPP_NFV, "STATUS: outport %d in_port_id %d\n", out_port,
 		ports_fwd_array[out_port].in_port_id);
 
 	return 0;
@@ -135,7 +141,7 @@ create_pcap_rx(char *rx_fpath)
 	if (tmp_fp == NULL) {
 		(tmp_fp = fopen(template, "w"));
 		if (tmp_fp == NULL) {
-			RTE_LOG(ERR, APP, "Failed to open %s\n", template);
+			RTE_LOG(ERR, SPP_NFV, "Failed to open %s\n", template);
 			return -1;
 		}
 	}
@@ -143,12 +149,12 @@ create_pcap_rx(char *rx_fpath)
 	sprintf(cmd_str, "text2pcap %s %s", template, rx_fpath);
 	res = system(cmd_str);
 	if (res != 0) {
-		RTE_LOG(ERR, APP,
+		RTE_LOG(ERR, SPP_NFV,
 				"Failed to create pcap device %s\n",
 				rx_fpath);
 		return -1;
 	}
-	RTE_LOG(INFO, APP, "PCAP device created\n");
+	RTE_LOG(INFO, SPP_NFV, "PCAP device created\n");
 	fclose(tmp_fp);
 	return 0;
 }
@@ -169,21 +175,21 @@ add_ring_pmd(int ring_id)
 	/* Look up ring with provided ring_id */
 	ring = rte_ring_lookup(rx_queue_name);
 	if (ring == NULL) {
-		RTE_LOG(ERR, APP,
+		RTE_LOG(ERR, SPP_NFV,
 			"Failed to get RX ring %s - is primary running?\n",
 			rx_queue_name);
 		return -1;
 	}
-	RTE_LOG(INFO, APP, "Looked up ring '%s'\n", rx_queue_name);
+	RTE_LOG(INFO, SPP_NFV, "Looked up ring '%s'\n", rx_queue_name);
 
 	/* create ring pmd*/
 	res = rte_eth_from_ring(ring);
 	if (res < 0) {
-		RTE_LOG(ERR, APP,
+		RTE_LOG(ERR, SPP_NFV,
 			"Cannot create eth dev with rte_eth_from_ring()\n");
 		return -1;
 	}
-	RTE_LOG(INFO, APP, "Created ring PMD: %d\n", res);
+	RTE_LOG(INFO, SPP_NFV, "Created ring PMD: %d\n", res);
 
 	return res;
 }
@@ -242,7 +248,7 @@ add_vhost_pmd(int index)
 	if (ret < 0)
 		return ret;
 
-	RTE_LOG(DEBUG, APP, "vhost port id %d\n", vhost_port_id);
+	RTE_LOG(DEBUG, SPP_NFV, "vhost port id %d\n", vhost_port_id);
 
 	return vhost_port_id;
 }
@@ -329,7 +335,7 @@ add_pcap_pmd(int index)
 	if (ret < 0)
 		return ret;
 
-	RTE_LOG(DEBUG, APP, "pcap port id %d\n", pcap_pmd_port_id);
+	RTE_LOG(DEBUG, SPP_NFV, "pcap port id %d\n", pcap_pmd_port_id);
 
 	return pcap_pmd_port_id;
 }
@@ -391,7 +397,7 @@ add_null_pmd(int index)
 	if (ret < 0)
 		return ret;
 
-	RTE_LOG(DEBUG, APP, "null port id %d\n", null_pmd_port_id);
+	RTE_LOG(DEBUG, SPP_NFV, "null port id %d\n", null_pmd_port_id);
 
 	return null_pmd_port_id;
 }
@@ -416,8 +422,8 @@ forward_array_reset(void)
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (ports_fwd_array[i].in_port_id != PORT_RESET) {
 			ports_fwd_array[i].out_port_id = PORT_RESET;
-			RTE_LOG(INFO, APP, "Port ID %d\n", i);
-			RTE_LOG(INFO, APP, "out_port_id %d\n",
+			RTE_LOG(INFO, SPP_NFV, "Port ID %d\n", i);
+			RTE_LOG(INFO, SPP_NFV, "out_port_id %d\n",
 				ports_fwd_array[i].out_port_id);
 		}
 	}
@@ -434,4 +440,4 @@ static enum port_type get_port_type(char *portname)
 	return UNDEF;
 }
 
-#endif
+#endif // _NFV_COMMAND_UTILS_H_

@@ -1,13 +1,16 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018  Nippon Telegraph and Telephone Corporation.
+ * Copyright(c) 2015-2016 Intel Corporation
+ * Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef NFV_COMMANDS_H
-#define NFV_COMMANDS_H
+#ifndef _NFV_COMMANDS_H_
+#define _NFV_COMMANDS_H_
 
 #include "common.h"
 #include "nfv.h"
 #include "command_utils.h"
+
+#define RTE_LOGTYPE_SPP_NFV RTE_LOGTYPE_USER1
 
 static int
 do_del(char *res_uid)
@@ -19,7 +22,7 @@ do_del(char *res_uid)
 
 	res = parse_resource_uid(res_uid, &p_type, &p_id);
 	if (res < 0) {
-		RTE_LOG(ERR, APP,
+		RTE_LOG(ERR, SPP_NFV,
 			"Failed to parse resource UID\n");
 		return -1;
 	}
@@ -30,7 +33,7 @@ do_del(char *res_uid)
 			return -1;
 
 	} else if (!strcmp(p_type, "ring")) {
-		RTE_LOG(DEBUG, APP, "Del ring id %d\n", p_id);
+		RTE_LOG(DEBUG, SPP_NFV, "Del ring id %d\n", p_id);
 		port_id = find_port_id(p_id, RING);
 		if (port_id == PORT_RESET)
 			return -1;
@@ -115,7 +118,7 @@ do_connection(int *connected, int *sock)
 
 	if (*connected == 0) {
 		if (*sock < 0) {
-			RTE_LOG(INFO, APP, "Creating socket...\n");
+			RTE_LOG(INFO, SPP_NFV, "Creating socket...\n");
 			*sock = socket(AF_INET, SOCK_STREAM, 0);
 			if (*sock < 0)
 				rte_exit(EXIT_FAILURE, "socket error\n");
@@ -127,15 +130,16 @@ do_connection(int *connected, int *sock)
 			servaddr.sin_port = htons(server_port);
 		}
 
-		RTE_LOG(INFO, APP, "Trying to connect ... socket %d\n", *sock);
+		RTE_LOG(INFO,
+			SPP_NFV, "Trying to connect ... socket %d\n", *sock);
 		ret = connect(*sock, (struct sockaddr *) &servaddr,
 				sizeof(servaddr));
 		if (ret < 0) {
-			RTE_LOG(ERR, APP, "Connection Error");
+			RTE_LOG(ERR, SPP_NFV, "Connection Error");
 			return ret;
 		}
 
-		RTE_LOG(INFO, APP, "Connected\n");
+		RTE_LOG(INFO, SPP_NFV, "Connected\n");
 		*connected = 1;
 	}
 
@@ -156,7 +160,7 @@ parse_command(char *str)
 	/* tokenize user command from controller */
 	token_list[max_token] = strtok(str, " ");
 	while (token_list[max_token] != NULL) {
-		RTE_LOG(DEBUG, APP, "token %d = %s\n", max_token,
+		RTE_LOG(DEBUG, SPP_NFV, "token %d = %s\n", max_token,
 			token_list[max_token]);
 		max_token++;
 		token_list[max_token] = strtok(NULL, " ");
@@ -166,7 +170,7 @@ parse_command(char *str)
 		return 0;
 
 	if (!strcmp(token_list[0], "status")) {
-		RTE_LOG(DEBUG, APP, "status\n");
+		RTE_LOG(DEBUG, SPP_NFV, "status\n");
 		memset(str, '\0', MSG_SIZE);
 		if (cmd == FORWARD)
 			get_sec_stats_json(str, client_id, "running",
@@ -186,26 +190,26 @@ parse_command(char *str)
 			client_id = id;
 
 	} else if (!strcmp(token_list[0], "exit")) {
-		RTE_LOG(DEBUG, APP, "exit\n");
-		RTE_LOG(DEBUG, APP, "stop\n");
+		RTE_LOG(DEBUG, SPP_NFV, "exit\n");
+		RTE_LOG(DEBUG, SPP_NFV, "stop\n");
 		cmd = STOP;
 		ret = -1;
 
 	} else if (!strcmp(token_list[0], "stop")) {
-		RTE_LOG(DEBUG, APP, "stop\n");
+		RTE_LOG(DEBUG, SPP_NFV, "stop\n");
 		cmd = STOP;
 
 	} else if (!strcmp(token_list[0], "forward")) {
-		RTE_LOG(DEBUG, APP, "forward\n");
+		RTE_LOG(DEBUG, SPP_NFV, "forward\n");
 		cmd = FORWARD;
 
 	} else if (!strcmp(token_list[0], "add")) {
-		RTE_LOG(DEBUG, APP, "Received add command\n");
+		RTE_LOG(DEBUG, SPP_NFV, "Received add command\n");
 		if (do_add(token_list[1]) < 0)
-			RTE_LOG(ERR, APP, "Failed to do_add()\n");
+			RTE_LOG(ERR, SPP_NFV, "Failed to do_add()\n");
 
 	} else if (!strcmp(token_list[0], "patch")) {
-		RTE_LOG(DEBUG, APP, "patch\n");
+		RTE_LOG(DEBUG, SPP_NFV, "patch\n");
 
 		if (max_token <= 1)
 			return 0;
@@ -241,41 +245,41 @@ parse_command(char *str)
 					"Patch not found, both of",
 					in_p_type, in_p_id,
 					out_p_type, out_p_id);
-				RTE_LOG(ERR, APP, "%s\n", err_msg);
+				RTE_LOG(ERR, SPP_NFV, "%s\n", err_msg);
 			} else if (in_port == PORT_RESET) {
 				char err_msg[128];
 				memset(err_msg, '\0', sizeof(err_msg));
 				sprintf(err_msg, "%s '%s:%d'",
 					"Patch not found, in_port",
 					in_p_type, in_p_id);
-				RTE_LOG(ERR, APP, "%s\n", err_msg);
+				RTE_LOG(ERR, SPP_NFV, "%s\n", err_msg);
 			} else if (out_port == PORT_RESET) {
 				char err_msg[128];
 				memset(err_msg, '\0', sizeof(err_msg));
 				sprintf(err_msg, "%s '%s:%d'",
 					"Patch not found, out_port",
 					out_p_type, out_p_id);
-				RTE_LOG(ERR, APP, "%s\n", err_msg);
+				RTE_LOG(ERR, SPP_NFV, "%s\n", err_msg);
 			}
 
 			if (add_patch(in_port, out_port) == 0)
-				RTE_LOG(INFO, APP,
+				RTE_LOG(INFO, SPP_NFV,
 					"Patched '%s:%d' and '%s:%d'\n",
 					in_p_type, in_p_id,
 					out_p_type, out_p_id);
 
 			else
-				RTE_LOG(ERR, APP, "Failed to patch\n");
+				RTE_LOG(ERR, SPP_NFV, "Failed to patch\n");
 			ret = 0;
 		}
 
 	} else if (!strcmp(token_list[0], "del")) {
-		RTE_LOG(DEBUG, APP, "Received del command\n");
+		RTE_LOG(DEBUG, SPP_NFV, "Received del command\n");
 
 		cmd = STOP;
 
 		if (do_del(token_list[1]) < 0)
-			RTE_LOG(ERR, APP, "Failed to do_del()\n");
+			RTE_LOG(ERR, SPP_NFV, "Failed to do_del()\n");
 	}
 
 	return ret;
@@ -290,13 +294,13 @@ do_receive(int *connected, int *sock, char *str)
 
 	ret = recv(*sock, str, MSG_SIZE, 0);
 	if (ret <= 0) {
-		RTE_LOG(DEBUG, APP, "Receive count: %d\n", ret);
+		RTE_LOG(DEBUG, SPP_NFV, "Receive count: %d\n", ret);
 		if (ret < 0)
-			RTE_LOG(ERR, APP, "Receive Fail");
+			RTE_LOG(ERR, SPP_NFV, "Receive Fail");
 		else
-			RTE_LOG(INFO, APP, "Receive 0\n");
+			RTE_LOG(INFO, SPP_NFV, "Receive 0\n");
 
-		RTE_LOG(INFO, APP, "Assume Server closed connection\n");
+		RTE_LOG(INFO, SPP_NFV, "Assume Server closed connection\n");
 		close(*sock);
 		*sock = SOCK_RESET;
 		*connected = 0;
@@ -313,14 +317,14 @@ do_send(int *connected, int *sock, char *str)
 
 	ret = send(*sock, str, MSG_SIZE, 0);
 	if (ret == -1) {
-		RTE_LOG(ERR, APP, "send failed");
+		RTE_LOG(ERR, SPP_NFV, "send failed");
 		*connected = 0;
 		return -1;
 	}
 
-	RTE_LOG(INFO, APP, "To Server: %s\n", str);
+	RTE_LOG(INFO, SPP_NFV, "To Server: %s\n", str);
 
 	return 0;
 }
 
-#endif
+#endif // _NFV_COMMANDS_H_

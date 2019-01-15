@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018  Nippon Telegraph and Telephone Corporation.
+ * Copyright(c) 2015-2016 Intel Corporation
+ * Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <arpa/inet.h>
@@ -8,8 +9,11 @@
 #include <rte_eth_ring.h>
 #include <rte_eth_vhost.h>
 #include <rte_memzone.h>
+#include <rte_log.h>
 
 #include "nfv.h"
+
+#define RTE_LOGTYPE_SPP_NFV RTE_LOGTYPE_USER1
 
 static sig_atomic_t on = 1;
 
@@ -19,7 +23,7 @@ static sig_atomic_t on = 1;
 static void
 usage(const char *progname)
 {
-	RTE_LOG(INFO, APP,
+	RTE_LOG(INFO, SPP_NFV,
 		"Usage: %s [EAL args] -- -n <client_id>\n\n", progname);
 }
 
@@ -114,12 +118,12 @@ nfv_loop(void)
 {
 	unsigned int lcore_id = rte_lcore_id();
 
-	RTE_LOG(INFO, APP, "entering main loop on lcore %u\n", lcore_id);
+	RTE_LOG(INFO, SPP_NFV, "entering main loop on lcore %u\n", lcore_id);
 
 	while (1) {
 		if (unlikely(cmd == STOP)) {
 			sleep(1);
-			/*RTE_LOG(INFO, APP, "Idling\n");*/
+			/*RTE_LOG(INFO, SPP_NFV, "Idling\n");*/
 			continue;
 		} else if (cmd == FORWARD) {
 			forward();
@@ -190,7 +194,7 @@ main(int argc, char *argv[])
 
 	set_user_log_debug(1);
 
-	RTE_LOG(INFO, APP, "Number of Ports: %d\n", nb_ports);
+	RTE_LOG(INFO, SPP_NFV, "Number of Ports: %d\n", nb_ports);
 
 	cmd = STOP;
 
@@ -211,8 +215,8 @@ main(int argc, char *argv[])
 		rte_eal_remote_launch(main_loop, NULL, lcore_id);
 	}
 
-	RTE_LOG(INFO, APP, "My ID %d start handling message\n", client_id);
-	RTE_LOG(INFO, APP, "[Press Ctrl-C to quit ...]\n");
+	RTE_LOG(INFO, SPP_NFV, "My ID %d start handling message\n", client_id);
+	RTE_LOG(INFO, SPP_NFV, "[Press Ctrl-C to quit ...]\n");
 
 	/* send and receive msg loop */
 	while (on) {
@@ -226,7 +230,7 @@ main(int argc, char *argv[])
 		if (ret < 0)
 			continue;
 
-		RTE_LOG(DEBUG, APP, "Received string: %s\n", str);
+		RTE_LOG(DEBUG, SPP_NFV, "Received string: %s\n", str);
 
 		flg_exit = parse_command(str);
 
@@ -242,6 +246,6 @@ main(int argc, char *argv[])
 	/* exit */
 	close(sock);
 	sock = SOCK_RESET;
-	RTE_LOG(INFO, APP, "spp_nfv exit.\n");
+	RTE_LOG(INFO, SPP_NFV, "spp_nfv exit.\n");
 	return 0;
 }

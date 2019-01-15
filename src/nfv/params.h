@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018  Nippon Telegraph and Telephone Corporation.
+ * Copyright(c) 2015-2016 Intel Corporation
+ * Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef NFV_PARAMS_H
-#define NFV_PARAMS_H
+#ifndef _NFV_PARAMS_H_
+#define _NFV_PARAMS_H_
 
 /* It is used to convert port name from string type to enum */
 struct porttype_map {
@@ -38,4 +39,4 @@ static enum cmd_type cmd;
 
 static struct port_map port_map[RTE_MAX_ETHPORTS];
 
-#endif
+#endif // _NFV_PARAMS_H_

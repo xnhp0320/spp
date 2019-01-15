@@ -9,7 +9,9 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 
-#include "common.h"
+#include "shared/common.h"
+#include "shared/secondary/utils.h"
+
 #include "spp_proc.h"
 #include "spp_mirror.h"
 #include "command_proc.h"

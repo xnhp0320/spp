@@ -15,6 +15,7 @@ class SppMirror(object):
     # All of commands and sub-commands used for validation and completion.
     MIRROR_CMDS = {
             'status': None,
+            'exit': None,
             'component': ['start', 'stop'],
             'port': ['add', 'del']}
 

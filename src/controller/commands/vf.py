@@ -15,6 +15,7 @@ class SppVf(object):
     # All of commands and sub-commands used for validation and completion.
     VF_CMDS = {
             'status': None,
+            'exit': None,
             'component': ['start', 'stop'],
             'port': ['add', 'del'],
             'classifier_table': ['add', 'del']}

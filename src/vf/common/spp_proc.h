@@ -13,7 +13,7 @@
  */
 
 #include <netinet/in.h>
-#include "common.h"
+#include "shared/common.h"
 
 /**
  * TODO(Yamashita) change type names.
@@ -355,7 +355,7 @@ void dump_buff(const char *name, const void *addr, const size_t size);
  * @retval 0~   ring_port_id.
  * @retval -1   failed.
  */
-int add_ring_pmd(int ring_id);
+int spp_vf_add_ring_pmd(int ring_id);
 
 /**
  * added vhost_pmd
@@ -368,7 +368,7 @@ int add_ring_pmd(int ring_id);
  * @retval 0~   vhost_port_id.
  * @retval -1   failed.
  */
-int add_vhost_pmd(int index, int client);
+int spp_vf_add_vhost_pmd(int index, int client);
 
 /**
  * Get core status

@@ -14,6 +14,9 @@
 #include "spp_proc.h"
 #include "spp_port.h"
 
+#include "shared/secondary/add_port.h"
+#include "shared/secondary/utils.h"
+
 #ifdef SPP_VF_MODULE
 #include "../spp_forward.h"
 #include "../classifier_mac.h"
@@ -21,6 +24,8 @@
 #ifdef SPP_MIRROR_MODULE
 #include "../../mirror/spp_mirror.h"
 #endif /* SPP_MIRROR_MODULE */
+
+#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
 /* Manage data to addoress */
 struct manage_data_addr_info {
@@ -71,7 +76,7 @@ dump_buff(const char *name, const void *addr, const size_t size)
 
 /* generation of the ring port */
 int
-add_ring_pmd(int ring_id)
+spp_vf_add_ring_pmd(int ring_id)
 {
 	struct rte_ring *ring;
 	int ring_port_id;
@@ -93,7 +98,7 @@ add_ring_pmd(int ring_id)
 
 /* generation of the vhost port */
 int
-add_vhost_pmd(int index, int client)
+spp_vf_add_vhost_pmd(int index, int client)
 {
 	struct rte_eth_conf port_conf = {
 		.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
@@ -815,7 +820,7 @@ flush_port(void)
 	for (cnt = 0; cnt < RTE_MAX_ETHPORTS; cnt++) {
 		port = &p_iface_info->vhost[cnt];
 		if ((port->iface_type != UNDEF) && (port->dpdk_port < 0)) {
-			ret = add_vhost_pmd(port->iface_no,
+			ret = spp_vf_add_vhost_pmd(port->iface_no,
 				g_mng_data_addr.p_startup_param->vhost_client);
 			if (ret < 0)
 				return SPP_RET_NG;

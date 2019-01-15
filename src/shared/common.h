@@ -23,6 +23,9 @@
 
 #define NO_FLAGS 0
 
+/* Interval time to retry connection. */
+#define CONN_RETRY_USEC (1000 * 1000)  /* micro sec */
+
 /*
  * When doing reads from the NIC or the client queues,
  * use this batch size

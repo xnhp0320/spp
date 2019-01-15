@@ -1,11 +1,16 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2015-2016 Intel Corporation
+ * Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef _INIT_H_
-#define _INIT_H_
+#ifndef _PRIMARY_INIT_H_
+#define _PRIMARY_INIT_H_
 
 #include <stdint.h>
+
+#define MBUF_OVERHEAD (sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define RX_MBUF_DATA_SIZE 2048
+#define MBUF_SIZE (RX_MBUF_DATA_SIZE + MBUF_OVERHEAD)
 
 /*
  * Define a client structure with all needed info, including
@@ -33,4 +38,9 @@ extern struct port_info *ports;
 
 int init(int argc, char *argv[]);
 
-#endif /* ifndef _INIT_H_ */
+void check_all_ports_link_status(struct port_info *ports, uint16_t port_num,
+		uint32_t port_mask);
+
+int init_port(uint16_t port_num, struct rte_mempool *pktmbuf_pool);
+
+#endif /* ifndef _PRIMARY_INIT_H_ */

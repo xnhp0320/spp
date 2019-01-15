@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2015-2016 Intel Corporation
+ * Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
  */
 
+#include <signal.h>
 #include <arpa/inet.h>
 #include <inttypes.h>
 #include <poll.h>
@@ -12,6 +14,7 @@
 #include "args.h"
 #include "common.h"
 #include "init.h"
+#include "primary.h"
 
 /* Buffer sizes of status message of primary. Total must be equal to MSG_SIZE */
 #define PRI_BUF_SIZE_PHY 512
@@ -27,7 +30,7 @@ static void
 turn_off(int sig)
 {
 	on = 0;
-	RTE_LOG(INFO, APP, "terminated %d\n", sig);
+	RTE_LOG(INFO, PRIMARY, "terminated %d\n", sig);
 }
 
 static const char *
@@ -114,7 +117,7 @@ sleep_lcore(void *dummy __rte_unused)
 	if (rte_atomic32_test_and_set(&display_stats)) {
 		const unsigned int sleeptime = 1;
 
-		RTE_LOG(INFO, APP, "Core %u displaying statistics\n",
+		RTE_LOG(INFO, PRIMARY, "Core %u displaying statistics\n",
 				rte_lcore_id());
 
 		/* Longer initial pause so above log is seen */
@@ -146,12 +149,12 @@ do_send(int *connected, int *sock, char *str)
 
 	ret = send(*sock, str, MSG_SIZE, 0);
 	if (ret == -1) {
-		RTE_LOG(ERR, APP, "send failed");
+		RTE_LOG(ERR, PRIMARY, "send failed");
 		*connected = 0;
 		return -1;
 	}
 
-	RTE_LOG(INFO, APP, "To Server: %s\n", str);
+	RTE_LOG(INFO, PRIMARY, "To Server: %s\n", str);
 
 	return 0;
 }
@@ -199,7 +202,7 @@ get_status_json(char *str)
 	char phy_port[buf_size];
 	for (i = 0; i < ports->num_ports; i++) {
 
-		RTE_LOG(DEBUG, APP, "Size of phy_ports str: %d\n",
+		RTE_LOG(DEBUG, PRIMARY, "Size of phy_ports str: %d\n",
 				(int)strlen(phy_ports));
 
 		memset(phy_port, '\0', buf_size);
@@ -216,7 +219,7 @@ get_status_json(char *str)
 		int cur_buf_size = (int)strlen(phy_ports) +
 			(int)strlen(phy_port);
 		if (cur_buf_size > phyp_buf_size - 1) {
-			RTE_LOG(ERR, APP,
+			RTE_LOG(ERR, PRIMARY,
 				"Cannot send all of phy_port stats (%d/%d)\n",
 				i, ports->num_ports);
 			sprintf(phy_ports + strlen(phy_ports) - 1, "%s", "");
@@ -232,7 +235,7 @@ get_status_json(char *str)
 	char ring_port[buf_size];
 	for (i = 0; i < num_clients; i++) {
 
-		RTE_LOG(DEBUG, APP, "Size of ring_ports str: %d\n",
+		RTE_LOG(DEBUG, PRIMARY, "Size of ring_ports str: %d\n",
 				(int)strlen(ring_ports));
 
 		memset(ring_port, '\0', buf_size);
@@ -249,7 +252,7 @@ get_status_json(char *str)
 		int cur_buf_size = (int)strlen(ring_ports) +
 			(int)strlen(ring_port);
 		if (cur_buf_size > ringp_buf_size - 1) {
-			RTE_LOG(ERR, APP,
+			RTE_LOG(ERR, PRIMARY,
 				"Cannot send all of ring_port stats (%d/%d)\n",
 				i, num_clients);
 			sprintf(ring_ports + strlen(ring_ports) - 1, "%s", "");
@@ -262,7 +265,7 @@ get_status_json(char *str)
 			sprintf(ring_ports, "%s,", ring_ports);
 	}
 
-	RTE_LOG(DEBUG, APP, "{\"phy_ports\": [%s], \"ring_ports\": [%s]}",
+	RTE_LOG(DEBUG, PRIMARY, "{\"phy_ports\": [%s], \"ring_ports\": [%s]}",
 			phy_ports, ring_ports);
 
 	sprintf(str, "{\"phy_ports\": [%s], \"ring_ports\": [%s]}",
@@ -281,20 +284,20 @@ parse_command(char *str)
 	/* tokenize the user commands from controller */
 	token_list[i] = strtok(str, " ");
 	while (token_list[i] != NULL) {
-		RTE_LOG(DEBUG, APP, "token %d = %s\n", i, token_list[i]);
+		RTE_LOG(DEBUG, PRIMARY, "token %d = %s\n", i, token_list[i]);
 		i++;
 		token_list[i] = strtok(NULL, " ");
 	}
 
 	if (!strcmp(token_list[0], "status")) {
-		RTE_LOG(DEBUG, APP, "status\n");
+		RTE_LOG(DEBUG, PRIMARY, "status\n");
 
 		memset(str, '\0', MSG_SIZE);
 		ret = get_status_json(str);
 
 	} else if (!strcmp(token_list[0], "exit")) {
-		RTE_LOG(DEBUG, APP, "exit\n");
-		RTE_LOG(DEBUG, APP, "stop\n");
+		RTE_LOG(DEBUG, PRIMARY, "exit\n");
+		RTE_LOG(DEBUG, PRIMARY, "stop\n");
 		cmd = STOP;
 		ret = -1;
 
@@ -326,14 +329,14 @@ do_receive(int *connected, int *sock, char *str)
 
 	ret = recv(*sock, str, MSG_SIZE, 0);
 	if (ret <= 0) {
-		RTE_LOG(DEBUG, APP, "Receive count: %d\n", ret);
+		RTE_LOG(DEBUG, PRIMARY, "Receive count: %d\n", ret);
 
 		if (ret < 0)
-			RTE_LOG(ERR, APP, "Receive Fail");
+			RTE_LOG(ERR, PRIMARY, "Receive Fail");
 		else
-			RTE_LOG(INFO, APP, "Receive 0\n");
+			RTE_LOG(INFO, PRIMARY, "Receive 0\n");
 
-		RTE_LOG(INFO, APP, "Assume Server closed connection\n");
+		RTE_LOG(INFO, PRIMARY, "Assume Server closed connection\n");
 		close(*sock);
 		*sock = SOCK_RESET;
 		*connected = 0;
@@ -351,7 +354,7 @@ do_connection(int *connected, int *sock)
 
 	if (*connected == 0) {
 		if (*sock < 0) {
-			RTE_LOG(INFO, APP, "Creating socket...\n");
+			RTE_LOG(INFO, PRIMARY, "Creating socket...\n");
 			*sock = socket(AF_INET, SOCK_STREAM, 0);
 			if (*sock < 0)
 				rte_exit(EXIT_FAILURE, "socket error\n");
@@ -366,15 +369,16 @@ do_connection(int *connected, int *sock)
 			pfd.events = POLLIN;
 		}
 
-		RTE_LOG(INFO, APP, "Trying to connect ... socket %d\n", *sock);
+		RTE_LOG(INFO,
+			PRIMARY, "Trying to connect ... socket %d\n", *sock);
 		ret = connect(*sock, (struct sockaddr *) &servaddr,
 			sizeof(servaddr));
 		if (ret < 0) {
-			RTE_LOG(ERR, APP, "Connection Error");
+			RTE_LOG(ERR, PRIMARY, "Connection Error");
 			return ret;
 		}
 
-		RTE_LOG(INFO, APP, "Connected\n");
+		RTE_LOG(INFO, PRIMARY, "Connected\n");
 		*connected = 1;
 	}
 
@@ -399,7 +403,7 @@ main(int argc, char *argv[])
 
 	set_user_log_debug(1);
 
-	RTE_LOG(INFO, APP, "Finished Process Init.\n");
+	RTE_LOG(INFO, PRIMARY, "Finished Process Init.\n");
 
 	/* clear statistics */
 	clear_stats();
@@ -418,7 +422,7 @@ main(int argc, char *argv[])
 		if (ret < 0)
 			continue;
 
-		RTE_LOG(DEBUG, APP, "Received string: %s\n", str);
+		RTE_LOG(DEBUG, PRIMARY, "Received string: %s\n", str);
 
 		flg_exit = parse_command(str);
 
@@ -434,6 +438,6 @@ main(int argc, char *argv[])
 	/* exit */
 	close(sock);
 	sock = SOCK_RESET;
-	RTE_LOG(INFO, APP, "spp_primary exit.\n");
+	RTE_LOG(INFO, PRIMARY, "spp_primary exit.\n");
 	return 0;
 }

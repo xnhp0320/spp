@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2015-2016 Intel Corporation
+ * Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <limits.h>
@@ -11,8 +12,13 @@
 #include "args.h"
 #include "common.h"
 #include "init.h"
+#include "primary.h"
 
 #define CLIENT_QUEUE_RINGSIZE 128
+
+#define MBUFS_PER_CLIENT 1536
+#define MBUFS_PER_PORT 1536
+#define MBUF_CACHE_SIZE 512
 
 /* array of info/queues for clients */
 struct client *clients;
@@ -37,7 +43,7 @@ init_mbuf_pools(void)
 	 * don't pass single-producer/single-consumer flags to mbuf create as
 	 * it seems faster to use a cache instead
 	 */
-	RTE_LOG(DEBUG, APP, "Creating mbuf pool '%s' [%u mbufs] ...\n",
+	RTE_LOG(DEBUG, PRIMARY, "Creating mbuf pool '%s' [%u mbufs] ...\n",
 		PKTMBUF_POOL_NAME, num_mbufs);
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
@@ -158,6 +164,135 @@ init(int argc, char *argv[])
 
 	/* initialise the client queues/rings for inter-eu comms */
 	init_shm_rings();
+
+	return 0;
+}
+
+/* Check the link status of all ports in up to 9s, and print them finally */
+void
+check_all_ports_link_status(struct port_info *ports, uint16_t port_num,
+		uint32_t port_mask)
+{
+#define CHECK_INTERVAL 100 /* 100ms */
+#define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
+	uint8_t count, all_ports_up;
+	uint16_t portid;
+	struct rte_eth_link link;
+
+	RTE_LOG(INFO, PRIMARY, "\nChecking link status");
+	fflush(stdout);
+	for (count = 0; count <= MAX_CHECK_TIME; count++) {
+		all_ports_up = 1;
+		for (portid = 0; portid < port_num; portid++) {
+			if ((port_mask & (1 << ports->id[portid])) == 0)
+				continue;
+
+			memset(&link, 0, sizeof(link));
+			rte_eth_link_get_nowait(ports->id[portid], &link);
+
+			/* clear all_ports_up flag if any link down */
+			if (link.link_status == 0) {
+				all_ports_up = 0;
+				break;
+			}
+		}
+
+		if (all_ports_up == 0) {
+			printf(".");
+			fflush(stdout);
+			rte_delay_ms(CHECK_INTERVAL);
+		} else {
+			printf("done\n");
+			break;
+		}
+	}
+
+	/* all ports up or timed out */
+	for (portid = 0; portid < port_num; portid++) {
+		if ((port_mask & (1 << ports->id[portid])) == 0)
+			continue;
+
+		memset(&link, 0, sizeof(link));
+		rte_eth_link_get_nowait(ports->id[portid], &link);
+
+		/* print link status */
+		if (link.link_status)
+			RTE_LOG(INFO, PRIMARY,
+				"Port %d Link Up - speed %u Mbps - %s\n",
+				ports->id[portid], link.link_speed,
+				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+					"full-duplex\n" : "half-duplex\n");
+		else
+			RTE_LOG(INFO, PRIMARY,
+				"Port %d Link Down\n", ports->id[portid]);
+	}
+}
+
+/**
+ * Initialise an individual port:
+ * - configure number of rx and tx rings
+ * - set up each rx ring, to pull from the main mbuf pool
+ * - set up each tx ring
+ * - start the port and report its status to stdout
+ */
+int
+init_port(uint16_t port_num, struct rte_mempool *pktmbuf_pool)
+{
+	/* for port configuration all features are off by default */
+	const struct rte_eth_conf port_conf = {
+		.rxmode = {
+			.mq_mode = ETH_MQ_RX_RSS,
+		},
+	};
+	const uint16_t rx_rings = 1, tx_rings = 1;
+	const uint16_t rx_ring_size = RTE_MP_RX_DESC_DEFAULT;
+	const uint16_t tx_ring_size = RTE_MP_TX_DESC_DEFAULT;
+	uint16_t q;
+	int retval;
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_conf local_port_conf = port_conf;
+	struct rte_eth_txconf txq_conf;
+
+	RTE_LOG(INFO, PRIMARY, "Port %u init ... ", port_num);
+	fflush(stdout);
+
+	rte_eth_dev_info_get(port_num, &dev_info);
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		local_port_conf.txmode.offloads |=
+			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	txq_conf = dev_info.default_txconf;
+	txq_conf.offloads = local_port_conf.txmode.offloads;
+
+	/*
+	 * Standard DPDK port initialisation - config port, then set up
+	 * rx and tx rings
+	 */
+	retval = rte_eth_dev_configure(port_num, rx_rings, tx_rings,
+		&port_conf);
+	if (retval != 0)
+		return retval;
+
+	for (q = 0; q < rx_rings; q++) {
+		retval = rte_eth_rx_queue_setup(port_num, q, rx_ring_size,
+			rte_eth_dev_socket_id(port_num), NULL, pktmbuf_pool);
+		if (retval < 0)
+			return retval;
+	}
+
+	for (q = 0; q < tx_rings; q++) {
+		retval = rte_eth_tx_queue_setup(port_num, q, tx_ring_size,
+			rte_eth_dev_socket_id(port_num), &txq_conf);
+		if (retval < 0)
+			return retval;
+	}
+
+	rte_eth_promiscuous_enable(port_num);
+
+	retval = rte_eth_dev_start(port_num);
+	if (retval < 0)
+		return retval;
+
+	RTE_LOG(INFO, PRIMARY, "Port %d Init done\n", port_num);
 
 	return 0;
 }

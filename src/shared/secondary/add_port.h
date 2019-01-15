@@ -3,122 +3,66 @@
  * Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef _NFV_COMMAND_UTILS_H_
-#define _NFV_COMMAND_UTILS_H_
+#ifndef _SHARED_SECONDARY_ADD_PORT_H_
+#define _SHARED_SECONDARY_ADD_PORT_H_
 
-#include "common.h"
-#include "secondary.h"
-
-#define RTE_LOGTYPE_SPP_NFV RTE_LOGTYPE_USER1
+#include <arpa/inet.h>
+#include "utils.h"
 
 // The number of receive descriptors to allocate for the receive ring.
 #define NR_DESCS 128
 
+#define VHOST_IFACE_NAME "/tmp/sock%u"
+#define VHOST_BACKEND_NAME "eth_vhost%u"
+
+#define PCAP_PMD_DEV_NAME "eth_pcap%u"
+#define NULL_PMD_DEV_NAME "eth_null%u"
+
 #define PCAP_IFACE_RX "/tmp/spp-rx%d.pcap"
 #define PCAP_IFACE_TX "/tmp/spp-tx%d.pcap"
 
-static void
-forward_array_init_one(unsigned int i)
+#define RTE_LOGTYPE_SHARED RTE_LOGTYPE_USER1
+
+static inline const char *
+get_vhost_backend_name(unsigned int id)
 {
-	ports_fwd_array[i].in_port_id = PORT_RESET;
-	ports_fwd_array[i].out_port_id = PORT_RESET;
+	/*
+	 * buffer for return value. Size calculated by %u being replaced
+	 * by maximum 3 digits (plus an extra byte for safety)
+	 */
+	static char buffer[sizeof(VHOST_BACKEND_NAME) + 2];
+
+	snprintf(buffer, sizeof(buffer) - 1, VHOST_BACKEND_NAME, id);
+	return buffer;
 }
 
-static void
-forward_array_remove(int port_id)
+static inline char *
+get_vhost_iface_name(unsigned int id)
 {
-	unsigned int i;
+	/*
+	 * buffer for return value. Size calculated by %u being replaced
+	 * by maximum 3 digits (plus an extra byte for safety)
+	 */
+	static char buffer[sizeof(VHOST_IFACE_NAME) + 2];
 
-	/* Update ports_fwd_array */
-	forward_array_init_one(port_id);
-
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if (ports_fwd_array[i].in_port_id == PORT_RESET)
-			continue;
-
-		if (ports_fwd_array[i].out_port_id == port_id) {
-			ports_fwd_array[i].out_port_id = PORT_RESET;
-			break;
-		}
-	}
+	snprintf(buffer, sizeof(buffer) - 1, VHOST_IFACE_NAME, id);
+	return buffer;
 }
 
-static void
-port_map_init_one(unsigned int i)
+static inline const char *
+get_pcap_pmd_name(int id)
 {
-	port_map[i].id = PORT_RESET;
-	port_map[i].port_type = UNDEF;
-	port_map[i].stats = &port_map[i].default_stats;
+	static char buffer[sizeof(PCAP_PMD_DEV_NAME) + 2];
+	snprintf(buffer, sizeof(buffer) - 1, PCAP_PMD_DEV_NAME, id);
+	return buffer;
 }
 
-static void
-port_map_init(void)
+static inline const char *
+get_null_pmd_name(int id)
 {
-	unsigned int i;
-
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
-		port_map_init_one(i);
-}
-
-/* Return 0 if invalid */
-static int
-is_valid_port(uint16_t port_id)
-{
-	if (port_id > RTE_MAX_ETHPORTS)
-		return 0;
-
-	return port_map[port_id].id != PORT_RESET;
-}
-
-/*
- * Return actual port ID which is assigned by system internally, or PORT_RESET
- * if port is not found.
- */
-static uint16_t
-find_port_id(int id, enum port_type type)
-{
-	uint16_t port_id = PORT_RESET;
-	uint16_t i;
-
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if (port_map[i].port_type != type)
-			continue;
-
-		if (port_map[i].id == id) {
-			port_id = i;
-			break;
-		}
-	}
-
-	return port_id;
-}
-
-/* Return -1 as an error if given patch is invalid */
-static int
-add_patch(uint16_t in_port, uint16_t out_port)
-{
-	if (!is_valid_port(in_port) || !is_valid_port(out_port))
-		return -1;
-
-	/* Populate in port data */
-	ports_fwd_array[in_port].in_port_id = in_port;
-	ports_fwd_array[in_port].rx_func = &rte_eth_rx_burst;
-	ports_fwd_array[in_port].tx_func = &rte_eth_tx_burst;
-	ports_fwd_array[in_port].out_port_id = out_port;
-
-	/* Populate out port data */
-	ports_fwd_array[out_port].in_port_id = out_port;
-	ports_fwd_array[out_port].rx_func = &rte_eth_rx_burst;
-	ports_fwd_array[out_port].tx_func = &rte_eth_tx_burst;
-
-	RTE_LOG(DEBUG, SPP_NFV, "STATUS: in port %d in_port_id %d\n", in_port,
-		ports_fwd_array[in_port].in_port_id);
-	RTE_LOG(DEBUG, SPP_NFV, "STATUS: in port %d patch out port id %d\n",
-		in_port, ports_fwd_array[in_port].out_port_id);
-	RTE_LOG(DEBUG, SPP_NFV, "STATUS: outport %d in_port_id %d\n", out_port,
-		ports_fwd_array[out_port].in_port_id);
-
-	return 0;
+	static char buffer[sizeof(NULL_PMD_DEV_NAME) + 2];
+	snprintf(buffer, sizeof(buffer) - 1, NULL_PMD_DEV_NAME, id);
+	return buffer;
 }
 
 /*
@@ -141,7 +85,7 @@ create_pcap_rx(char *rx_fpath)
 	if (tmp_fp == NULL) {
 		(tmp_fp = fopen(template, "w"));
 		if (tmp_fp == NULL) {
-			RTE_LOG(ERR, SPP_NFV, "Failed to open %s\n", template);
+			RTE_LOG(ERR, SHARED, "Failed to open %s\n", template);
 			return -1;
 		}
 	}
@@ -149,12 +93,12 @@ create_pcap_rx(char *rx_fpath)
 	sprintf(cmd_str, "text2pcap %s %s", template, rx_fpath);
 	res = system(cmd_str);
 	if (res != 0) {
-		RTE_LOG(ERR, SPP_NFV,
+		RTE_LOG(ERR, SHARED,
 				"Failed to create pcap device %s\n",
 				rx_fpath);
 		return -1;
 	}
-	RTE_LOG(INFO, SPP_NFV, "PCAP device created\n");
+	RTE_LOG(INFO, SHARED, "PCAP device created\n");
 	fclose(tmp_fp);
 	return 0;
 }
@@ -175,21 +119,21 @@ add_ring_pmd(int ring_id)
 	/* Look up ring with provided ring_id */
 	ring = rte_ring_lookup(rx_queue_name);
 	if (ring == NULL) {
-		RTE_LOG(ERR, SPP_NFV,
+		RTE_LOG(ERR, SHARED,
 			"Failed to get RX ring %s - is primary running?\n",
 			rx_queue_name);
 		return -1;
 	}
-	RTE_LOG(INFO, SPP_NFV, "Looked up ring '%s'\n", rx_queue_name);
+	RTE_LOG(INFO, SHARED, "Looked up ring '%s'\n", rx_queue_name);
 
 	/* create ring pmd*/
 	res = rte_eth_from_ring(ring);
 	if (res < 0) {
-		RTE_LOG(ERR, SPP_NFV,
+		RTE_LOG(ERR, SHARED,
 			"Cannot create eth dev with rte_eth_from_ring()\n");
 		return -1;
 	}
-	RTE_LOG(INFO, SPP_NFV, "Created ring PMD: %d\n", res);
+	RTE_LOG(INFO, SHARED, "Created ring PMD: %d\n", res);
 
 	return res;
 }
@@ -248,7 +192,7 @@ add_vhost_pmd(int index)
 	if (ret < 0)
 		return ret;
 
-	RTE_LOG(DEBUG, SPP_NFV, "vhost port id %d\n", vhost_port_id);
+	RTE_LOG(DEBUG, SHARED, "vhost port id %d\n", vhost_port_id);
 
 	return vhost_port_id;
 }
@@ -335,7 +279,7 @@ add_pcap_pmd(int index)
 	if (ret < 0)
 		return ret;
 
-	RTE_LOG(DEBUG, SPP_NFV, "pcap port id %d\n", pcap_pmd_port_id);
+	RTE_LOG(DEBUG, SHARED, "pcap port id %d\n", pcap_pmd_port_id);
 
 	return pcap_pmd_port_id;
 }
@@ -397,47 +341,9 @@ add_null_pmd(int index)
 	if (ret < 0)
 		return ret;
 
-	RTE_LOG(DEBUG, SPP_NFV, "null port id %d\n", null_pmd_port_id);
+	RTE_LOG(DEBUG, SHARED, "null port id %d\n", null_pmd_port_id);
 
 	return null_pmd_port_id;
 }
 
-/* initialize forward array with default value*/
-static void
-forward_array_init(void)
-{
-	unsigned int i;
-
-	/* initialize port forward array*/
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
-		forward_array_init_one(i);
-}
-
-static void
-forward_array_reset(void)
-{
-	unsigned int i;
-
-	/* initialize port forward array*/
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if (ports_fwd_array[i].in_port_id != PORT_RESET) {
-			ports_fwd_array[i].out_port_id = PORT_RESET;
-			RTE_LOG(INFO, SPP_NFV, "Port ID %d\n", i);
-			RTE_LOG(INFO, SPP_NFV, "out_port_id %d\n",
-				ports_fwd_array[i].out_port_id);
-		}
-	}
-}
-
-/* Return a type of port as a enum member of porttype_map structure. */
-static enum port_type get_port_type(char *portname)
-{
-	for (int i = 0; portmap[i].port_name != NULL; i++) {
-		const char *port_name = portmap[i].port_name;
-		if (strncmp(portname, port_name, strlen(port_name)) == 0)
-			return portmap[i].port_type;
-	}
-	return UNDEF;
-}
-
-#endif // _NFV_COMMAND_UTILS_H_
+#endif

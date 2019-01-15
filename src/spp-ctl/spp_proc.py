@@ -56,7 +56,9 @@ class SppProc(object):
 
     @staticmethod
     def _decode_reply(data):
-        data = json.loads(data)
+        # Remove '\0' in msg from secondary process to avoid error.
+        data = json.loads(data.replace('\0', ''))
+
         result = data["results"][0]
         if result["result"] == "error":
             msg = result["error_details"]["message"]
@@ -69,7 +71,8 @@ class SppProc(object):
             data = SppProc._decode_reply(data)
             if data["process_type"] == proc_type:
                 return data["client_id"]
-        except:
+        except Exception as e:
+            LOG.error(e)
             return None
 
 
@@ -161,15 +164,8 @@ class NfvProc(SppProc):
         super(NfvProc, self).__init__(TYPE_NFV, id, conn)
 
     @staticmethod
-    def _decode_reply(data):
-        return data.strip('\0')
-
-    @staticmethod
     def _decode_client_id(data):
-        try:
-            return int(NfvProc._decode_reply(data))
-        except:
-            return None
+        return SppProc._decode_client_id_common(data, TYPE_NFV)
 
     @exec_command
     def get_status(self):

@@ -229,7 +229,7 @@ main(int argc, char *argv[])
 	while (on) {
 		ret = do_connection(&connected, &sock);
 		if (ret < 0) {
-			sleep(1);
+			usleep(CONN_RETRY_USEC);
 			continue;
 		}
 

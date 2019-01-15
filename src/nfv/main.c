@@ -11,7 +11,14 @@
 #include <rte_memzone.h>
 #include <rte_log.h>
 
-#include "nfv.h"
+#include "shared/common.h"
+#include "shared/secondary/add_port.h"
+
+#include "params.h"
+#include "init.h"
+#include "nfv_status.h"
+#include "nfv_utils.h"
+#include "commands.h"
 
 #define RTE_LOGTYPE_SPP_NFV RTE_LOGTYPE_USER1
 

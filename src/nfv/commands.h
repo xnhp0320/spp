@@ -6,9 +6,7 @@
 #ifndef _NFV_COMMANDS_H_
 #define _NFV_COMMANDS_H_
 
-#include "common.h"
-#include "nfv.h"
-#include "command_utils.h"
+#include "shared/secondary/add_port.h"
 
 #define RTE_LOGTYPE_SPP_NFV RTE_LOGTYPE_USER1
 

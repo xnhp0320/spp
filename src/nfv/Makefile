@@ -13,11 +13,11 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP = spp_nfv
 
 # all source are stored in SRCS-y
-SRCS-y := main.c ../shared/common.c ../shared/secondary.c
+SRCS-y := main.c nfv_status.c ../shared/common.c ../shared/secondary/utils.c
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS) -O3 -MMD
-CFLAGS += -I$(SRCDIR)/../shared
+CFLAGS += -I$(SRCDIR)/../
 
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 LDLIBS += -lrte_pmd_ring

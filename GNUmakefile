@@ -26,6 +26,7 @@ dist-clean:
 	make clean
 	rm -rf $(wildcard src/*/$(RTE_TARGET))
 	rm -rf $(wildcard src/*/shared)
+	rm -rf $(wildcard src/mirror/vf)
 
 .PHONY: doc
 doc: doc-all

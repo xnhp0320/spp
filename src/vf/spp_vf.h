@@ -13,6 +13,8 @@
  * This provides the function for initializing and starting the threads.
  */
 
-#include "common.h"
+#include "shared/common.h"
+
+#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
 #endif /* __SPP_VF_H__ */

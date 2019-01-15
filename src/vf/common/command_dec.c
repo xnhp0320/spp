@@ -12,6 +12,7 @@
 #include "command_dec.h"
 
 #define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER2
 
 /* command string  */
 #define SPP_COMMAND_CLASSFIER_TABLE_STR "classifier_table"

@@ -22,6 +22,7 @@
 #include "command_proc.h"
 
 #define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER2
 
 /* request message initial size */
 #define CMD_RES_ERR_MSG_SIZE  128

@@ -1644,18 +1644,17 @@ spp_command_proc_do(void)
 	}
 
 	ret = spp_connect_to_controller(&sock);
+
 	if (unlikely(ret != SPP_RET_OK))
 		return SPP_RET_OK;
 
 	msg_ret = spp_receive_message(&sock, &msgbuf);
 	if (unlikely(msg_ret <= 0)) {
-		if (likely(msg_ret == 0)) {
-			sleep(1);
+		if (likely(msg_ret == 0))
 			return SPP_RET_OK;
-		} else if (unlikely(msg_ret == SPP_CONNERR_TEMPORARY)) {
-			sleep(1);
+		else if (unlikely(msg_ret == SPP_CONNERR_TEMPORARY))
 			return SPP_RET_OK;
-		} else
+		else
 			return SPP_RET_NG;
 	}
 

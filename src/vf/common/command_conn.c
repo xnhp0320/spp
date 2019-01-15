@@ -12,6 +12,7 @@
 #include <rte_log.h>
 #include <rte_branch_prediction.h>
 
+#include "shared/common.h"
 #include "string_buffer.h"
 #include "command_conn.h"
 
@@ -70,6 +71,9 @@ spp_connect_to_controller(int *sock)
 		RTE_LOG(ERR, SPP_COMMAND_PROC,
 				"Cannot connect to controller. errno=%d\n",
 				errno);
+		/* Wait to retry */
+		usleep(CONN_RETRY_USEC);
+
 		close(*sock);
 		*sock = -1;
 		return SPP_CONNERR_TEMPORARY;

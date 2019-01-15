@@ -350,10 +350,8 @@ main(int argc, char *argv[])
 				break;
 
 		       /*
-			* To avoid making CPU busy, this thread waits
-			* here for 100 ms.
+			* Wait to avoid CPU overloaded.
 			*/
-
 			usleep(100);
 
 #ifdef SPP_RINGLATENCYSTATS_ENABLE

@@ -378,21 +378,8 @@ class V1NFVHandler(BaseHandler):
         self.route('/<sec_id:int>/patches', 'DELETE',
                    callback=self.nfv_patch_del)
 
-    def convert_nfv_info(self, sec_id, data):
-        nfv = {}
-
-        # spp_nfv returns status info in JSON format. 'null' means
-        # that it has no dst port.
-        #   {"status":"idling","ports":[{"src":"phy:0","dst":"null"},...
-
-        try:
-            nfv = json.loads(data)
-        except json.JSONDecodeError as e:
-            print("%s" % e)
-        return nfv
-
     def nfv_get(self, proc):
-        return self.convert_nfv_info(proc.id, proc.get_status())
+        return proc.get_status()
 
     def _validate_nfv_forward(self, body):
         if 'action' not in body:

@@ -57,12 +57,21 @@ class SppProc(object):
     @staticmethod
     def _decode_reply(data):
         # Remove '\0' in msg from secondary process to avoid error.
-        data = json.loads(data.replace('\0', ''))
+        try:
+            data = json.loads(data.replace('\0', ''))
 
-        result = data["results"][0]
-        if result["result"] == "error":
-            msg = result["error_details"]["message"]
-            raise bottle.HTTPError(400, "command error: %s" % msg)
+            if "results" in data.keys():  # msg ffrom spp_vf
+                result = data["results"][0]
+                if result["result"] == "error":
+                    msg = result["error_details"]["message"]
+                    raise bottle.HTTPError(400, "command error: %s" % msg)
+
+            return data
+
+        except json.JSONDecodeError as e:
+            LOG.error("'{}' in JSON decoding.".format(e))
+
+        LOG.debug("Reply msg is not JSON format '{data}'.".format(**locals()))
         return data
 
     @staticmethod

@@ -6,7 +6,6 @@ eventlet.monkey_patch()
 
 import argparse
 import errno
-import json
 import logging
 import socket
 import subprocess

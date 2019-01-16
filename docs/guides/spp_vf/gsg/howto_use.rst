@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2010-2014 Intel Corporation
+    Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
 
 .. _spp_vf_gsg_howto_use:
 
@@ -80,9 +80,12 @@ DPDK, the other is ``spp_vf``.
 .. code-block:: console
 
     $ sudo ./src/vf/x86_64-native-linuxapp-gcc/spp_vf \
-    -l 0,2-13 -n 4 --proc-type=secondary \
-    -- \
-    --client-id 1 -s 127.0.0.1:6666 --vhost-client
+      -l 0,2-13 -n 4 \
+      --proc-type=secondary \
+      -- \
+      --client-id 1 \
+      -s 127.0.0.1:6666 \
+      --vhost-client
 
 If ``--vhost-client`` option is specified, then ``vhost-user`` act as
 the client, otherwise the server.
@@ -102,9 +105,31 @@ spp_mirror
 .. code-block:: console
 
     $ sudo ./src/mirror/x86_64-native-linuxapp-gcc/spp_mirror \
-    -l 2 -n 4 --proc-type=secondary \
-    -- \
-    --client-id 1 -s 127.0.0.1:6666 --vhost-client
+      -l 2 -n 4 \
+      --proc-type=secondary \
+      -- \
+      --client-id 1 \
+      -s 127.0.0.1:6666 \
+      -vhost-client
+
+.. _spp_vf_gsg_howto_use_spp_pcap:
+
+spp_pcap
+--------
+
+After run ``spp_primary`` is launched, run secondary process ``spp_pcap``.
+
+.. code-block:: console
+
+    $ sudo ./src/pcap/x86_64-native-linuxapp-gcc/spp_pcap \
+      -l 0-3 -n 4 \
+      --proc-type=secondary \
+      -- \
+      --client-id 1 \
+      -s 127.0.0.1:6666 \
+      -i phy:0 \
+      --output /mnt/pcap \
+      --limit_file_size 107374182
 
 VM
 --

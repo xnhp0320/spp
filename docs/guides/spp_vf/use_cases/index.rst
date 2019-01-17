@@ -7,6 +7,7 @@ Use Cases
 .. toctree::
    :maxdepth: 2
 
+   basic_usecase_vf
    usecase1
    usecase2
    usecase3

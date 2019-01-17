@@ -324,10 +324,9 @@ creation.
 
 .. code-block:: console
 
+    # remove sock0 if already exist
     $ ls /tmp | grep sock
     sock0 ...
-
-    # remove it if exist
     $ sudo rm /tmp/sock0
 
 Create ``/tmp/sock0`` from ``nfv 1``.
@@ -338,41 +337,40 @@ Create ``/tmp/sock0`` from ``nfv 1``.
     Add vhost:0.
 
 
-.. _usecase_unidir_l2fwd_vhost:
+.. _usecase_spp_nfv_l2fwd_vhost_nw:
 
-Uni-Directional L2fwd with Vhost PMD
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Setup Network Configuration in spp_nfv
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Launch a VM by using the vhost interface created as previous step.
+Launch a VM by using the vhost interface created in the previous step.
 Lauunching VM is described in
-:ref:`How to Use<spp_setup_howto_use>`
-and launch ``spp_vm`` with secondary ID 2.
-You find ``nfv 2`` from controller after launched.
+:ref:`How to Use<spp_setup_howto_use>`.
 
-Patch ``phy:0`` and ``phy:1`` to ``vhost:0`` with ``nfv 1``
+Patch ``phy:0`` to ``vhost:0`` and ``vhost:1`` to ``phy:1`` from ``nfv 1``
 running on host.
-Inside VM, configure loopback by patching ``phy:0`` and ``phy:0``
-with ``nfv 2``.
 
 .. code-block:: console
 
     spp > nfv 1; patch phy:0 vhost:0
     Patch ports (phy:0 -> vhost:0).
-    spp > nfv 1; patch vhost:0 phy:1
-    Patch ports (vhost:0 -> phy:1).
-    spp > nfv 2; patch phy:0 phy:0
-    Patch ports (phy:0 -> phy:0).
+    spp > nfv 1; patch vhost:1 phy:1
+    Patch ports (vhost:1 -> phy:1).
     spp > nfv 1; forward
     Start forwarding.
-    spp > nfv 2; forward
-    Start forwarding.
 
-.. _figure_spp_uni_directional_l2fwd_vhost:
+Finally, start forwarding inside the VM by using two vhost ports
+to confirm that network on host is configured.
 
-.. figure:: ../images/setup/use_cases/spp_unidir_l2fwd_vhost.*
+.. code-block:: console
+
+    $ sudo $RE_SDK/examples/build/l2fwd -l 0-1 -- -p 0x03
+
+.. _figure_spp_nfv_l2fwd_vhost:
+
+.. figure:: ../images/setup/use_cases/spp_nfv_l2fwd_vhost.*
    :width: 72%
 
-   Uni-Directional l2fwd with vhost
+   Single spp_nfv with vhost PMD
 
 Single spp_nfv with PCAP PMD
 -----------------------------
@@ -625,7 +623,7 @@ Configure Service VM Nodes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is almost similar as
-:ref:`Uni-Directional L2fwd with Vhost PMD<usecase_unidir_l2fwd_vhost>`.
+:ref:`Setup Network Configuration in spp_nfv<usecase_spp_nfv_l2fwd_vhost_nw>`
 to setup for host2, host3, and host4.
 
 For host2, swith server to host2 and run nfv commands.

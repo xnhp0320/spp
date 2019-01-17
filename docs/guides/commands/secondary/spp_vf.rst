@@ -276,6 +276,20 @@ adds VLAN tag before sending packet outside.
     # add VLAN tag with VLAN ID and PCP in forwarder 'fw2'
     spp > vf 2; port add phy:1 tx fw2 add_vlantag 101 3
 
+Adding port may cause component to start packet forwarding. Please see
+detail in
+:ref:`design spp_vf<spp_vf_design_spp_vf>`.
+
+Until one rx port and one tx port are added, forwarder does not start packet
+forwarding. If it is requested to add more than one rx and one tx port, it
+replies an error message.
+Until at least one rx port and two tx ports are added, classifier does not
+start packet forwarding. If it is requested to add more than two rx ports, it
+replies an error message.
+Until at least two rx ports and one tx port are added, merger does not start
+packet forwarding. If it is requested to add more than two tx ports, it replies
+an error message.
+
 Deleting port
 ~~~~~~~~~~~~~
 
@@ -298,6 +312,10 @@ Here is an example.
     # delete tx port 'vhost:1' from 'mgr1'
     spp > vf 2; port del vhost:1 tx mgr1
 
+.. note::
+
+   Deleting port may cause component to stop packet forwarding.
+   Please see detail in :ref:`design spp_vf<spp_vf_design_spp_vf>`.
 
 .. _commands_spp_vf_classifier_table:
 

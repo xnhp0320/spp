@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2019 Nippon Telegraph and Telephone Corporation
+    Copyright(c) 2010-2014 Intel Corporation
 
 .. _spp_vf_design:
 
@@ -37,12 +37,16 @@ Forwarder
 ^^^^^^^^^
 
 Simply forwards packets from rx to tx port.
+Forwarder does not start forwarding until when at least one rx and one tx are
+added.
 
 Merger
 ^^^^^^
 
 Receives packets from multiple rx ports to aggregate
 packets and sends to a desctination port.
+Merger does not start forwarding until when at least two rx and one tx are
+added.
 
 Classifier
 ^^^^^^^^^^
@@ -56,6 +60,8 @@ Classifier prepares tables for each of VLAN ID and decides
 which of table is referred
 if TPID (Tag Protocol Indetifier) is included in a packet and
 equals to 0x8100 as defined in IEEE 802.1Q standard.
+Classifier does not start forwarding until when at least one rx and two tx are
+added.
 
 .. _spp_vf_design_spp_mirror:
 
@@ -107,7 +113,7 @@ spp_pcap
 the second smallest ID and ``wirter`` threads on the rest of cores. You should
 have enough cores if you need to capture large amount of packets.
 
-``spp_pcap`` has 4 types of command. ``start``,``stop``,``exit`` and ``status``
+``spp_pcap`` has 4 types of command. ``start``, ``stop``, ``exit`` and ``status``
 to control behavior of ``spp_pcap``.
 
 With ``start`` command, you can start capturing.

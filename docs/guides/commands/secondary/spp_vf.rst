@@ -15,7 +15,7 @@ configuration, assigning or releasing resources.
 
 Secondary ID is referred as ``--client-id`` which is given as an argument
 while launching ``spp_vf``. It should be unique among all of secondary
-processes including ``spp_nfv``, ``spp_vm`` and others.
+processes including ``spp_nfv`` and others.
 
 ``vf`` command takes an secondary ID and one of sub commands. Secondary ID
 and sub command should be separated with delimiter ``;``, or failed to a

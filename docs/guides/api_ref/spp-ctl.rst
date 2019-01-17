@@ -285,13 +285,13 @@ Response
 There is no body content for the response of a successful ``DELETE`` request.
 
 
-API for spp_nfv/spp_vm
-----------------------
+API for spp_nfv
+---------------
 
 GET /v1/nfvs/{client_id}
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Get the information of the ``spp_nfv`` or ``spp_vm`` process.
+Get the information of ``spp_nfv``.
 
 * Normal response codes: 200
 * Error response codes: 400, 404
@@ -301,7 +301,7 @@ Request(path)
 
 .. _table_spp_ctl_nfvs_get:
 
-.. table:: Request parameter for getting spp_nfv or spp_vm info.
+.. table:: Request parameter for getting info of ``spp_nfv``.
 
     +-----------+---------+-------------------------------------+
     | Name      | Type    | Description                         |
@@ -323,7 +323,7 @@ Response
 
 .. _table_spp_ctl_spp_nfv_res:
 
-.. table:: Response params of getting spp_nfv or spp_vm info.
+.. table:: Response params of getting info of ``spp_nfv``.
 
     +-----------+---------+---------------------------------------------+
     | Name      | Type    | Description                                 |
@@ -342,7 +342,7 @@ patch objest
 
 .. _table_spp_ctl_patch_spp_nfv:
 
-.. table:: Attributes of patch of spp_nfv or spp_vm.
+.. table:: Attributes of patch command of ``spp_nfv``.
 
     +------+--------+----------------------------------------------+
     | Name | Type   | Description                                  |
@@ -395,7 +395,7 @@ Request(path)
 
 .. _table_spp_ctl_spp_nfv_forward_get:
 
-.. table:: Request params of forward of spp_nfv or spp_vm.
+.. table:: Request params of forward command of ``spp_nfv``.
 
     +-----------+---------+---------------------------------+
     | Name      | Type    | Description                     |
@@ -418,7 +418,7 @@ Request(body)
 
 .. _table_spp_ctl_spp_nfv_forward_get_body:
 
-.. table:: Request body params of forward of spp_nfv or spp_vm.
+.. table:: Request body params of forward of ``spp_nfv``.
 
     +--------+--------+-------------------------------------+
     | Name   | Type   | Description                         |
@@ -461,7 +461,7 @@ Request(path)
 
 .. _table_spp_ctl_spp_nfv_ports_get:
 
-.. table:: Request params of ports of spp_nfv or spp_vm.
+.. table:: Request params of ports of ``spp_nfv``.
 
     +-----------+---------+--------------------------------+
     | Name      | Type    | Description                    |
@@ -475,7 +475,7 @@ Request(body)
 
 .. _table_spp_ctl_spp_nfv_ports_get_body:
 
-.. table:: Request body params of ports of spp_nfv or spp_vm.
+.. table:: Request body params of ports of ``spp_nfv``.
 
     +--------+--------+---------------------------------------------------------------+
     | Name   | Type   | Description                                                   |
@@ -521,7 +521,7 @@ Request(path)
 
 .. _table_spp_ctl_spp_nfv_patches_get:
 
-.. table:: Request params of patches of spp_nfv or spp_vm.
+.. table:: Request params of patches of ``spp_nfv``.
 
     +-----------+---------+---------------------------------+
     | Name      | Type    | Description                     |
@@ -535,7 +535,7 @@ Request(body)
 
 .. _table_spp_ctl_spp_nfv_ports_patches_body:
 
-.. table:: Request body params of patches of spp_nfv or spp_vm.
+.. table:: Request body params of patches of ``spp_nfv``.
 
     +------+--------+------------------------------------+
     | Name | Type   | Description                        |
@@ -581,7 +581,7 @@ Request(path)
 
 .. _table_spp_ctl_spp_nfv_del_patches:
 
-.. table:: Request params of deleting patches of spp_nfv or spp_vm.
+.. table:: Request params of deleting patches of ``spp_nfv``.
 
     +-----------+---------+---------------------------------------+
     | Name      | Type    | Description                           |
@@ -614,7 +614,7 @@ Equivalent CLI command
 DELETE /v1/nfvs/{client_id}
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Terminate ``spp_nfv`` or ``spp_vm`` process.
+Terminate ``spp_nfv``.
 
 * Normal response codes: 204
 * Error response codes: 400, 404
@@ -624,7 +624,7 @@ Request(path)
 
 .. _table_spp_ctl_nfvs_delete:
 
-.. table:: Request parameter for terminating spp_nfv or spp_vm.
+.. table:: Request parameter for terminating ``spp_nfv``.
 
     +-----------+---------+-------------------------------------+
     | Name      | Type    | Description                         |

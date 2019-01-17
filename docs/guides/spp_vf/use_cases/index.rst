@@ -9,5 +9,6 @@ Use Cases
 
    basic_usecase_vf
    usecase1
+   basic_usecase_mirror
    usecase2
    usecase3

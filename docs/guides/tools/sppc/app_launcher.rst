@@ -24,7 +24,6 @@ inside a container.
     |--- pktgen.py
     |--- spp-nfv.py
     |--- spp-primary.py
-    |--- spp-vm.py
     ---- testpmd.py
 
 
@@ -190,19 +189,8 @@ SPP Secondary Container
 -----------------------
 
 In SPP, there are three types of secondary process, ``spp_nfv``,
-``spp_vm`` and  ``spp_vf``.
-However, SPP container does not support ``spp_vf`` currently.
-
-``spp_nfv`` is usually used for forwarding packets on host and
-``spp_vm`` is used for insidea a virtual machine.
-However, in a context of container, the usage is just a bit different.
-Both of secondary processes are launched as app containers,
-but ``spp_vm`` container has virtio interfaces while ``spp_nfv``
-container does not have it.
-It means that ``spp_nfv`` behaves as a path between NICs or containers,
-but ``spp_vm`` is a client of ``spp_nfv`` and simply forwarding from rx
-to tx ports. You do not need to use ``spp_vm`` without some cases for
-using virtual machines.
+``spp_vf`` or so.
+However, SPP container does only support ``spp_nfv`` currently.
 
 ``spp-nfv.py`` launches ``spp_nfv`` as an app container and requires
 options for secondary ID and core list (or core mask).
@@ -236,22 +224,6 @@ It shows only application specific options for simplicity.
       --ctrl-port CTRL_PORT
                             Port of SPP controller
       ...
-
-
-For launching ``spp_vm`` for vhost interface, it is required to assign
-a vhost device ID from ``app/spp-nfv.py`` and launch ``app/spp-vm.py``
-with same ID..
-
-.. code-block:: console
-
-    # Add vhost 1 from spp-nfv.py of sec 1
-    spp > sec 1;add vhost 1
-
-Launch a secondary container with device ID 1.
-
-.. code-block:: console
-
-    $ python app/spp-vm.py -i 2 -l 4-5 -d 1
 
 
 .. _sppc_appl_l2fwd:

@@ -130,8 +130,7 @@ Performance Test of Ring
 Ring PMD is a very fast path to communicate between DPDK processes.
 It is a kind of zero-copy data passing via shared memory and better
 performance than vhost PMD.
-Currently, only ``spp_nfv`` and ``spp_vm`` provide ring PMD in SPP
-container.
+Currently, only ``spp_nfv`` provides ring PMD in SPP container.
 It is also possible other DPDK applications to have ring PMD interface
 for SPP technically,
 but not implemented yet.

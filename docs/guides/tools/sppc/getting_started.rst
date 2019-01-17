@@ -196,13 +196,9 @@ and two ports.
 SPP Secondary Container
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-For secondary process, there are two launcher scripts,
-``spp-nfv.py`` and ``spp-vm.py``.
-There behave as similar to ``spp_nfv`` running on host and
-``spp_vm`` on guest VM.
-The difference is that both of them are running on containers.
+For secondary process, ``spp_nfv`` is only supported for running on container
+currently.
 
-You use only ``spp_nfv.py`` in this guide.
 Launch ``spp_nfv`` in terminal 3
 with options for secondary ID is ``1`` and
 core list is ``1-2`` for using 2nd and 3rd cores.

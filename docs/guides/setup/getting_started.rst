@@ -45,7 +45,16 @@ is for the number of pages.
 
     .. code-block:: console
 
-        $ cat /proc/cpuinfo | pdpe1gb
+        $ cat /proc/cpuinfo | grep pdpe1gb
+        flags           : fpu vme ... pdpe1gb ...
+
+You should run ``update-grub`` after editing to update grub's config file,
+or this configuration is not activated.
+
+.. code-block:: console
+
+   $ sudo update-grub
+   Generating grub configuration file ...
 
 For 2MB page, you can activate hugepages while booting or at anytime
 after system is booted.

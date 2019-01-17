@@ -22,6 +22,6 @@ an app container.
 .. _figure_sppc_overview:
 
 .. figure:: ../../images/tools/sppc/sppc_overview.*
-   :width: 85%
+   :width: 95%
 
    SPP container overview

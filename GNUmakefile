@@ -25,6 +25,7 @@ DOC_ROOT = docs/guides
 dist-clean:
 	make clean
 	rm -rf $(wildcard src/*/$(RTE_TARGET))
+	rm -rf $(wildcard src/*/shared)
 
 .PHONY: doc
 doc: doc-all

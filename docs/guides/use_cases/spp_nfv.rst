@@ -1,8 +1,9 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation
+    Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
 
-Use Cases
-=========
+spp_nfv
+=======
 
 .. _single_spp_nfv:
 
@@ -63,7 +64,7 @@ patches as you defined.
 .. _figure_spp_nfv_as_l2fwd:
 
 .. figure:: ../images/setup/use_cases/spp_nfv_l2fwd.*
-   :width: 52%
+   :width: 60%
 
    spp_nfv as l2fwd
 
@@ -133,7 +134,7 @@ from ``phy:1`` to ``phy:0`` for ``nfv 2``.
 .. _figure_spp_two_nfv_as_l2fwd:
 
 .. figure:: ../images/setup/use_cases/spp_two_nfv_l2fwd.*
-   :width: 52%
+   :width: 60%
 
    Two spp_nfv as l2fwd
 
@@ -158,7 +159,7 @@ Patch ``phy:0`` to ``phy:0`` for ``nfv 1`` and
 .. _figure_spp_two_nfv_loopback:
 
 .. figure:: ../images/setup/use_cases/spp_two_nfv_loopback.*
-   :width: 52%
+   :width: 62%
 
    Two spp_nfv for loopback
 
@@ -232,7 +233,7 @@ Then, connect it with ``patch`` subcommand.
 .. _figure_spp_uni_directional_l2fwd:
 
 .. figure:: ../images/setup/use_cases/spp_unidir_l2fwd.*
-   :width: 52%
+   :width: 72%
 
    Uni-Directional l2fwd
 
@@ -295,7 +296,7 @@ Then, add ``ring:0`` and ``ring:1`` to ``nfv 2``.
 .. _figure_spp_bi_directional_l2fwd:
 
 .. figure:: ../images/setup/use_cases/spp_bidir_l2fwd.*
-   :width: 52%
+   :width: 72%
 
    Bi-Directional l2fwd
 
@@ -308,7 +309,7 @@ Vhost PMD
 
 Vhost PMD is an interface for communicating between on hsot and guest VM.
 As described in
-:doc:`How to Use<howto_use>`,
+:ref:`How to Use<spp_setup_howto_use>`,
 vhost must be created by ``add`` subcommand before the VM is launched.
 
 
@@ -344,7 +345,7 @@ Uni-Directional L2fwd with Vhost PMD
 
 Launch a VM by using the vhost interface created as previous step.
 Lauunching VM is described in
-:doc:`How to Use<howto_use>`
+:ref:`How to Use<spp_setup_howto_use>`
 and launch ``spp_vm`` with secondary ID 2.
 You find ``nfv 2`` from controller after launched.
 
@@ -369,7 +370,7 @@ with ``nfv 2``.
 .. _figure_spp_uni_directional_l2fwd_vhost:
 
 .. figure:: ../images/setup/use_cases/spp_unidir_l2fwd_vhost.*
-   :width: 52%
+   :width: 72%
 
    Uni-Directional l2fwd with vhost
 
@@ -429,7 +430,7 @@ As the first usecase, add a pcap PMD and capture incoming packets from
 .. _figure_spp_pcap_incoming:
 
 .. figure:: ../images/setup/use_cases/spp_pcap_incoming.*
-   :width: 50%
+   :width: 60%
 
    Rapture incoming packets
 
@@ -472,7 +473,7 @@ Then, add pcap PMD ``pcap:2`` to another ``spp_nfv``.
 .. _figure_spp_pcap_restoring:
 
 .. figure:: ../images/setup/use_cases/spp_pcap_restoring.*
-   :width: 52%
+   :width: 60%
 
    Restore dumped packets
 

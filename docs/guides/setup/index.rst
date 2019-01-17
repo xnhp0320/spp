@@ -10,5 +10,4 @@ Setup Guide
 
    getting_started
    howto_use
-   use_cases
    performance_opt

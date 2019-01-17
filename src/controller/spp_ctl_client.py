@@ -29,10 +29,10 @@ class SppCtlClient(object):
                 # TODO(yasufum) revise print message to more appropriate
                 # for spp.py.
                 if res.status_code == 400:
-                    print('Syntax or lexical error, or SPP returns' +
+                    print('Syntax or lexical error, or SPP returns ' +
                           'error for the request.')
                 elif res.status_code == 404:
-                    print('URL is not supported, or no SPP process' +
+                    print('URL is not supported, or no SPP process ' +
                           'of client-id in a URL.')
                 elif res.status_code == 500:
                     print('System error occured in spp-ctl.')

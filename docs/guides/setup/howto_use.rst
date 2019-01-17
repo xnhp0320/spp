@@ -1,10 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation
 
+.. _spp_setup_howto_use:
+
 How to Use
 ==========
 
-As described in :ref:`Overview<spp_overview>`, SPP consists of
+As described in :ref:`Design<spp_overview_design>`, SPP consists of
 primary process for managing resources, secondary processes for
 forwarding packet, and SPP controller to accept user commands and
 send it to SPP processes.
@@ -58,6 +60,19 @@ to be accessed from other processes running on other than local node.
     # launch with URL http://192.168.1.100:7777
     $ python3 src/spp-ctl/spp-ctl -b 192.168.1.100
 
+``spp-ctl`` is also launched as a daemon process, or managed
+by ``systemd``.
+Here is a simple example of service file for systemd.
+
+.. code-block:: none
+
+    [Unit]
+    Description = SPP Controller
+
+    [Service]
+    ExecStart = /usr/bin/python3 /path/to/spp/src/spp-ctl/spp-ctl
+    User = root
+
 All of options can be referred with help option ``-h``.
 
 .. code-block:: console
@@ -74,6 +89,8 @@ All of options can be referred with help option ``-h``.
       -p PRI_PORT           primary port, default=5555
       -s SEC_PORT           secondary port, default=6666
       -a API_PORT           web api port, default=7777
+
+.. _spp_setup_howto_use_spp_cli:
 
 SPP CLI
 ~~~~~~~
@@ -112,7 +129,7 @@ soure or destination of phy ports.
 .. _figure_spp_howto_multi_spp:
 
 .. figure:: ../images/setup/howto_use/spp_howto_multi_spp.*
-   :width: 70%
+   :width: 80%
 
    Multiple SPP nodes
 

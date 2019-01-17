@@ -284,7 +284,9 @@ class V1VFHandler(BaseHandler, V1VFCommon):
         if body['type'] not in ["mac", "vlan"]:
             raise KeyInvalid('type', body['type'])
         self._validate_port(body['port'])
-        self._validate_mac(body['mac_address'])
+
+        if not body['mac_address'] == 'default':
+            self._validate_mac(body['mac_address'])
 
         if body['type'] == "vlan":
             try:

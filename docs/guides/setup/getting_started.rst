@@ -1,5 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation
+    Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
 
 .. _getting_started:
 
@@ -201,17 +202,27 @@ Clone repository and compile SPP in any directory.
     $ cd spp
     $ make  # Confirm that $RTE_SDK and $RTE_TARGET are set
 
+It also required to install Python3 and packages for running python scripts
+as following.
+You might need to run ``pip3`` with ``sudo`` if it is failed.
+
+.. code-block:: console
+
+    $ sudo apt update
+    $ sudo apt install python3
+    $ sudo apt install python3-pip
+    $ pip3 install -r requirements.txt
+
 
 Python 2 or 3 ?
 ~~~~~~~~~~~~~~~
 
-You need to install Python for using usertools of DPDK or SPP controller.
-DPDK supports both of Python2 and 3.
+In SPP, Python3 is required only for running ``spp-ctl``. Other python scripts
+are able to be launched both of Python2 and 3.
+
 Howevrer, Python2 will not be maintained after 2020 and SPP is going to update
 only supporting Python3.
-
-In SPP, it supports both of Python2 and 3 without spp-ctl currently, but is
-going to support only Python3 before the end of 2019.
+In SPP, it is planned to support only Python3 before the end of 2019.
 
 
 Binding Network Ports to DPDK

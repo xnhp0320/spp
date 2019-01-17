@@ -44,7 +44,7 @@ all of app container processes run on a single node.
 .. _figure_sppc_usecase_vhost:
 
 .. figure:: ../../images/tools/sppc/sppc_usecase_vhost.*
-    :width: 50%
+    :width: 58%
 
     Test of vhost PMD in a single node
 
@@ -285,7 +285,7 @@ as described in next sections.
 .. _figure_sppc_usecase_l2fwdpktgen:
 
 .. figure:: ../../images/tools/sppc/sppc_usecase_l2fwdpktgen.*
-    :width: 85%
+    :width: 95%
 
     Chainning pktgen and l2fwd
 
@@ -406,7 +406,7 @@ It is totally 7 lcores while the maximum number is 14.
 .. _figure_sppc_usecase_l2fwdpktgen_less:
 
 .. figure:: ../../images/tools/sppc/sppc_usecase_l2fwdpktgen_less.*
-    :width: 85%
+    :width: 95%
 
     Pktgen and l2fwd using less lcores
 

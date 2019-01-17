@@ -262,12 +262,12 @@ SPP Secondary
 -------------
 
 Secondary process behaves as a client of primary process and a worker
-for doing tasks for packet processing.
+for doing tasks for packet processing. There are several kinds of secondary
+process, for example, simply forwarding between ports or classsifying
+by referring packet header.
 
-This section describes about ``spp_nfv`` and ``spp_vm``,
-which just simply forward packets similar to ``l2fwd``.
-The difference between them is running on host or VM.
-``spp_vm`` runs inside a VM as described in name.
+This section describes about the simplest ``spp_nfv`` which simply forward
+packets similar to ``l2fwd``.
 
 
 Launch spp_nfv on Host
@@ -301,8 +301,8 @@ unique among all of secondaries.
 If you attempt to launch a secondary process with the same ID, it
 is failed.
 
-Launch spp_vf on VM
-~~~~~~~~~~~~~~~~~~~
+Launch SPP on VM
+~~~~~~~~~~~~~~~~
 
 To communicate DPDK application running on a VM,
 it is required to create a virtual device for the VM.
@@ -317,7 +317,7 @@ Run ``add`` command with resource UID ``vhost:0`` to create socket file.
 
     spp > nfv 1; add vhost:0
 
-In this example, create socket file with index 0 from ``spp_nfv`` of ID 1.
+In this example, it creates socket file with index 0 from ``spp_nfv`` of ID 1.
 Socket file is created as ``/tmp/sock0``.
 It is used as a qemu option to add vhost interface.
 
@@ -370,54 +370,3 @@ For other options, please refer to
     to the VMs. It is just one time for installing for template.
 
 After booted, you install DPDK and SPP in the VM as in the host.
-
-Run ``spp_vm`` with options.
-
-.. code-block:: console
-
-    $ cd /path/to/spp
-    $ sudo ./src/vm/x86_64-native-linuxapp-gcc/spp_vm \
-        -l 0-1 -n 4 \
-        --proc-type=primary \
-        -- \
-        -p 0x01 \
-        -n 1 \
-        -s 192.168.1.100:6666
-
-- EAL options:
-
-  - -l: core list (two cores required)
-  - --proc-type: process type
-
-- Application options:
-
-  - -p: port mask
-  - -n: secondary ID
-  - -s: IP address of controller and port prepared for secondary
-
-``spp_vm`` is also managed from SPP controller as same as on host.
-Secondary ID is used to identify for sending messages and must be
-unique among all of secondaries.
-If you attempt to launch a secondary process with the same ID,
-it is failed.
-
-In this case, port mask option is ``-p 0x01`` (using one port) because
-the VM is launched with just one vhost interface.
-You can use two or more ports if you launch VM with several
-``vhost-user`` and ``virtio-net-pci`` interfaces.
-
-Notice that ``spp_vm`` takes options similar to ``spp_primary``, not
-``spp_nfv``.
-It means that ``spp_vm`` has responsibilities for initializing EAL
-and forwarding packets in the VM.
-
-.. note::
-
-    ``spp_vm`` is actually running as primary process on a VM,
-    but managed as secondary process from SPP controller.
-    SPP does not support running resource manager as primary inside
-    a VM. Client behaves as secondary, but actually a primary, running
-    on the VM to communicate with other SPP procesess on host.
-
-    ``spp_vm`` must be launched with ``--proc-type=primary`` and
-    ``-p [PORTMASK]`` options similar to primary to initialize EAL.

@@ -421,3 +421,45 @@ For distributing multicast packet, it is cloned with
                             (long)classifier_info->active_classifieds[i]);
             }
     }
+
+Data management for command processing
+--------------------------------------
+``spp_vf`` has two data areas for for port, component and core.
+One is called reference area and other is called updating area.
+The reason is for having two data areas is that updating
+reference area which is referred by packet transmitting process
+directly may lead inconsistency when transmitting packet.
+When ``spp_vf`` process command, it changes pointer of reference
+area and updating area so that data which is referred by transmitting
+process is changed.
+
+The following code shows how flush is called inside spp_vf.
+You can read that data is flushed in the order of port, core and component.
+
+Note that ``spp_vf`` and ``spp_mirror`` has code logic in common and
+the above rule applies to also on ``spp_mirror``.
+
+.. code-block:: c
+
+        spp_flush(void)
+        {
+                int ret = SPP_RET_NG;
+                struct cancel_backup_info *backup_info = NULL;
+
+                spp_get_mng_data_addr(NULL, NULL, NULL,
+                                        NULL, NULL, NULL, &backup_info);
+
+                /* Initial setting of each interface. */
+                ret = flush_port();
+                        if (ret < SPP_RET_OK)
+                        return ret;
+
+                /* Flush of core index. */
+                flush_core();
+
+                /* Flush of component */
+                ret = flush_component();
+
+                backup_mng_info(backup_info);
+                return ret;
+        }

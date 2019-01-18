@@ -101,6 +101,8 @@ add_ring_pmd(int ring_id)
 	struct rte_ring *ring;
 	int res;
 	char rx_queue_name[32];  /* Prefix and number like as 'eth_ring_0' */
+	uint16_t port_id = PORT_RESET;
+	char dev_name[RTE_ETH_NAME_MAX_LEN];
 
 	memset(rx_queue_name, '\0', sizeof(rx_queue_name));
 	sprintf(rx_queue_name, "%s", get_rx_queue_name(ring_id));
@@ -116,12 +118,21 @@ add_ring_pmd(int ring_id)
 	RTE_LOG(INFO, SHARED, "Looked up ring '%s'\n", rx_queue_name);
 
 	/* create ring pmd*/
-	res = rte_eth_from_ring(ring);
-	if (res < 0) {
-		RTE_LOG(ERR, SHARED,
-			"Cannot create eth dev with rte_eth_from_ring()\n");
-		return -1;
+	snprintf(dev_name, RTE_ETH_NAME_MAX_LEN - 1, "net_ring_%s", ring->name);
+	/* check whether a port already exists. */
+	res = rte_eth_dev_get_port_by_name(dev_name, &port_id);
+	if (port_id == PORT_RESET) {
+		res = rte_eth_from_ring(ring);
+		if (res < 0) {
+			RTE_LOG(ERR, SHARED, "Cannot create eth dev with "
+						"rte_eth_from_ring()\n");
+			return -1;
+		}
+	} else {
+		res = port_id;
+		rte_eth_dev_start(res);
 	}
+
 	RTE_LOG(INFO, SHARED, "Created ring PMD: %d\n", res);
 
 	return res;

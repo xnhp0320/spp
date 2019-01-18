@@ -80,6 +80,8 @@ spp_vf_add_ring_pmd(int ring_id)
 {
 	struct rte_ring *ring;
 	int ring_port_id;
+	uint16_t port_id = PORT_RESET;
+	char dev_name[RTE_ETH_NAME_MAX_LEN];
 
 	/* Lookup ring of given id */
 	ring = rte_ring_lookup(get_rx_queue_name(ring_id));
@@ -90,7 +92,20 @@ spp_vf_add_ring_pmd(int ring_id)
 	}
 
 	/* Create ring pmd */
-	ring_port_id = rte_eth_from_ring(ring);
+	snprintf(dev_name, RTE_ETH_NAME_MAX_LEN - 1, "net_ring_%s", ring->name);
+	/* check whether a port already exists. */
+	ring_port_id = rte_eth_dev_get_port_by_name(dev_name, &port_id);
+	if (port_id == PORT_RESET) {
+		ring_port_id = rte_eth_from_ring(ring);
+		if (ring_port_id < 0) {
+			RTE_LOG(ERR, APP, "Cannot create eth dev with "
+						"rte_eth_from_ring()\n");
+			return SPP_RET_NG;
+		}
+	} else {
+		ring_port_id = port_id;
+		rte_eth_dev_start(ring_port_id);
+	}
 	RTE_LOG(INFO, APP, "ring port add. (no = %d / port = %d)\n",
 			ring_id, ring_port_id);
 	return ring_port_id;

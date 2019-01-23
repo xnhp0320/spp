@@ -469,48 +469,6 @@ init_component_info(struct component_info *cmp_info,
 	return SPP_RET_OK;
 }
 
-/* initialize classifier. */
-static int
-init_classifier(struct management_info *mng_info)
-{
-	int ret = SPP_RET_NG;
-	struct spp_component_info component_info;
-
-	memset(mng_info, 0, sizeof(struct management_info));
-	/*
-	 * Set the same value for "ref_index" and "upd_index"
-	 * so that it will not be changed from others during initialization,
-	 * and update "upd_index" after initialization is completed.
-	 * Therefore, this setting is consciously described.
-	 */
-	mng_info->ref_index = 0;
-	mng_info->upd_index = 0;
-	memset(&component_info, 0x00, sizeof(component_info));
-
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
-	RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC, "Enabled SSE4.2. use CRC hash.\n");
-#else
-	RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
-			"Disabled SSE4.2. use Jenkins hash.\n");
-#endif
-
-	/* populate the classifier information at reference */
-	ret = init_component_info(&mng_info->
-			cmp_infos[mng_info->ref_index], &component_info);
-	if (unlikely(ret != SPP_RET_OK)) {
-		RTE_LOG(ERR, SPP_CLASSIFIER_MAC,
-				"Cannot initialize classifier mac table. "
-				"ret=%d\n", ret);
-		return SPP_RET_NG;
-	}
-
-	/* updating side can be set by completion of initialization. */
-	mng_info->upd_index = mng_info->ref_index + 1;
-	mng_info->is_used = 1;
-
-	return SPP_RET_OK;
-}
-
 /* free mac classification instance. */
 static inline void
 free_mac_classification(struct mac_classification *mac_cls)
@@ -801,6 +759,16 @@ spp_classifier_mac_init(void)
 	memset(g_mng_infos, 0, sizeof(g_mng_infos));
 
 	return 0;
+}
+
+/* initialize classifier information. */
+void
+init_classifier_info(int component_id)
+{
+	struct management_info *mng_info = NULL;
+
+	mng_info = g_mng_infos + component_id;
+	uninit_classifier(mng_info);
 }
 
 /* classifier(mac address) update component info. */

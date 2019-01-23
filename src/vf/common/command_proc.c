@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <unistd.h>
@@ -303,6 +303,13 @@ spp_update_component(
 
 		info = (core_info + tmp_lcore_id);
 		core = &info->core[info->upd_index];
+
+#ifdef SPP_VF_MODULE
+		/* initialize classifier information */
+		if (component->type == SPP_COMPONENT_CLASSIFIER_MAC)
+			init_classifier_info(component_id);
+#endif /* SPP_VF_MODULE */
+
 		ret_del = del_component_info(component_id,
 				core->num, core->id);
 		if (ret_del >= 0)

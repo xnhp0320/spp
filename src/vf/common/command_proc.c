@@ -347,7 +347,6 @@ spp_update_port(enum spp_command_action action,
 				"(component = %s)\n", name);
 		return SPP_RET_NG;
 	}
-
 	spp_get_mng_data_addr(NULL, NULL,
 			&component_info, NULL, NULL, &change_component, NULL);
 	component = (component_info + component_id);
@@ -471,6 +470,8 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 	int ret;
 	int lcore_id, cnt;
 	struct core_info *core = NULL;
+	struct spp_component_info *component_info = NULL;
+	struct spp_component_info *component = NULL;
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		if (spp_get_core_status(lcore_id) == SPP_CORE_UNUSE)
@@ -493,8 +494,11 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 		}
 
 		for (cnt = 0; cnt < core->num; cnt++) {
+			spp_get_mng_data_addr(NULL, NULL, &component_info,
+							NULL, NULL, NULL, NULL);
+			component = (component_info + core->id[cnt]);
 #ifdef SPP_VF_MODULE
-			if (core->type == SPP_COMPONENT_CLASSIFIER_MAC) {
+			if (component->type == SPP_COMPONENT_CLASSIFIER_MAC) {
 				ret = spp_classifier_get_component_status(
 						lcore_id,
 						core->id[cnt],
@@ -516,7 +520,7 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 				RTE_LOG(ERR, APP, "Cannot iterate core "
 						"information. "
 						"(core = %d, type = %d)\n",
-						lcore_id, core->type);
+						lcore_id, component->type);
 				return SPP_RET_NG;
 			}
 		}

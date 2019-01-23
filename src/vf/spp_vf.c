@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <netinet/in.h>
@@ -209,21 +209,21 @@ slave_main(void *arg __attribute__ ((unused)))
 			core = get_core_info(lcore_id);
 		}
 
+		/* It is for processing multiple components. */
 		for (cnt = 0; cnt < core->num; cnt++) {
-			if (spp_get_component_type(lcore_id) ==
+			if (spp_get_component_type(core->id[cnt]) ==
 					SPP_COMPONENT_CLASSIFIER_MAC) {
-				/* Classifier loops inside the function. */
+				/* Classifier function. */
 				ret = spp_classifier_mac_do(core->id[cnt]);
-				break;
-			}
+				if (unlikely(ret != 0))
+					break;
+			} else {
 
-			/*
-			 * Forward / Merge returns at once.
-			 * It is for processing multiple components.
-			 */
-			ret = spp_forward(core->id[cnt]);
-			if (unlikely(ret != 0))
-				break;
+				/* Forward / Merge function. */
+				ret = spp_forward(core->id[cnt]);
+				if (unlikely(ret != 0))
+					break;
+			}
 		}
 		if (unlikely(ret != 0)) {
 			RTE_LOG(ERR, APP, "Core[%d] Component Error. "

@@ -408,31 +408,22 @@ static int
 decode_component_type_value(void *output, const char *arg_val,
 				int allow_override __attribute__ ((unused)))
 {
-	enum spp_component_type org_type, set_type;
+	enum spp_component_type comp_type;
 	struct spp_command_component *component = output;
 
 	/* "stop" has no type parameter. */
 	if (component->action != SPP_CMD_ACTION_START)
 		return SPP_RET_OK;
 
-	set_type = spp_convert_component_type(arg_val);
-	if (unlikely(set_type <= 0)) {
+	comp_type = spp_convert_component_type(arg_val);
+	if (unlikely(comp_type <= 0)) {
 		RTE_LOG(ERR, SPP_COMMAND_PROC,
 				"Unknown component type. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
 	}
 
-	org_type = spp_get_component_type_update(component->core);
-	if ((org_type != SPP_COMPONENT_UNUSE) && (org_type != set_type)) {
-		RTE_LOG(ERR, SPP_COMMAND_PROC,
-				"Component type does not match. "
-				"val=%s (org=%d, new=%d)\n",
-				arg_val, org_type, set_type);
-		return SPP_RET_NG;
-	}
-
-	component->type = set_type;
+	component->type = comp_type;
 	return SPP_RET_OK;
 }
 

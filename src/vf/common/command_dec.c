@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <unistd.h>
@@ -93,17 +93,6 @@ const char *PORT_ABILITY_STRINGS[] = {
 
 	/* termination */ "",
 };
-
-/* Get component type being updated on target core */
-static enum spp_component_type
-spp_get_component_type_update(unsigned int lcore_id)
-{
-	struct core_mng_info *core_info;
-
-	spp_get_mng_data_addr(NULL, NULL, NULL, &core_info, NULL, NULL, NULL);
-	struct core_mng_info *info = (core_info + lcore_id);
-	return info->core[info->upd_index].type;
-}
 
 /* Check mac address used on the port for registering or removing */
 static int

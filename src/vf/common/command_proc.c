@@ -270,12 +270,6 @@ spp_update_component(
 		}
 
 		core = &info->core[info->upd_index];
-		if ((core->type != SPP_COMPONENT_UNUSE) &&
-				(core->type != type)) {
-			RTE_LOG(ERR, APP, "Component type '%s' is invalid.\n",
-				name);
-			return SPP_RET_NG;
-		}
 
 		component = (component_info + component_id);
 		memset(component, 0x00, sizeof(struct spp_component_info));
@@ -284,7 +278,6 @@ spp_update_component(
 		component->lcore_id	= lcore_id;
 		component->component_id	= component_id;
 
-		core->type = type;
 		core->id[core->num] = component_id;
 		core->num++;
 		ret = SPP_RET_OK;
@@ -315,9 +308,6 @@ spp_update_component(
 		if (ret_del >= 0)
 			/* If deleted, decrement number. */
 			core->num--;
-
-		if (core->num == 0)
-			core->type = SPP_COMPONENT_UNUSE;
 
 		ret = SPP_RET_OK;
 		*(change_component + component_id) = 0;

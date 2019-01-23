@@ -211,12 +211,15 @@ slave_main(void *arg __attribute__ ((unused)))
 
 		/* It is for processing multiple components. */
 		for (cnt = 0; cnt < core->num; cnt++) {
+			/* Component classification to call a function. */
 			if (spp_get_component_type(core->id[cnt]) ==
 					SPP_COMPONENT_CLASSIFIER_MAC) {
+				/* Component type for classifier. */
 				ret = spp_classifier_mac_do(core->id[cnt]);
 				if (unlikely(ret != 0))
 					break;
 			} else {
+				/* Component type for forward or merge. */
 				ret = spp_forward(core->id[cnt]);
 				if (unlikely(ret != 0))
 					break;

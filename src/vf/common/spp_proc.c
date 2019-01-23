@@ -607,12 +607,13 @@ del_vhost_sockfile(struct spp_port_info *vhost)
 	}
 }
 
-/* Get component type of target core */
+/* Get component type of target component_info */
 enum spp_component_type
-spp_get_component_type(unsigned int lcore_id)
+spp_get_component_type(int id)
 {
-	struct core_mng_info *info = (g_mng_data_addr.p_core_info + lcore_id);
-	return info->core[info->ref_index].type;
+	struct spp_component_info *component_info =
+				(g_mng_data_addr.p_component_info + id);
+	return component_info->type;
 }
 
 /* Get core ID of target component */

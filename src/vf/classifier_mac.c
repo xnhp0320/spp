@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <unistd.h>
@@ -774,7 +774,7 @@ classify_packet(struct rte_mbuf **rx_pkts, uint16_t n_rx,
 
 /* change update index at classifier management information */
 static inline void
-change_update_index(struct management_info *mng_info, int id)
+change_classifier_index(struct management_info *mng_info, int id)
 {
 	if (unlikely(mng_info->ref_index ==
 			mng_info->upd_index)) {
@@ -815,11 +815,6 @@ spp_classifier_mac_update(struct spp_component_info *component_info)
 	RTE_LOG(INFO, SPP_CLASSIFIER_MAC,
 			"Component[%u] Start update component.\n", id);
 
-	/* wait until no longer access the new update side */
-	while (likely(mng_info->ref_index ==
-			mng_info->upd_index))
-		rte_delay_us_block(CHANGE_UPDATE_INDEX_WAIT_INTERVAL);
-
 	cmp_info = mng_info->cmp_infos + mng_info->upd_index;
 
 	/* initialize update side classifier information */
@@ -833,6 +828,7 @@ spp_classifier_mac_update(struct spp_component_info *component_info)
 
 	/* change index of reference side */
 	mng_info->upd_index = mng_info->ref_index;
+	mng_info->is_used = 1;
 
 	/* wait until no longer access the new update side */
 	while (likely(mng_info->ref_index ==
@@ -852,10 +848,8 @@ spp_classifier_mac_update(struct spp_component_info *component_info)
 int
 spp_classifier_mac_do(int id)
 {
-	int ret = SPP_RET_NG;
 	int i;
 	int n_rx;
-	unsigned int lcore_id = rte_lcore_id();
 	struct management_info *mng_info = g_mng_infos + id;
 	struct component_info *cmp_info = NULL;
 	struct rte_mbuf *rx_pkts[MAX_PKT_BURST];
@@ -867,76 +861,54 @@ spp_classifier_mac_do(int id)
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 			US_PER_S * DRAIN_TX_PACKET_INTERVAL;
 
-	/* initialize */
-	ret = init_classifier(mng_info);
-	if (unlikely(ret != SPP_RET_OK)) {
-		uninit_classifier(mng_info);
-		return ret;
-	}
+	/* change index of update classifier management information */
+	change_classifier_index(mng_info, id);
 
-	while (likely(spp_get_core_status(lcore_id) == SPP_CORE_FORWARD) &&
-		    likely(spp_check_core_update(lcore_id) == SPP_RET_NG)) {
-		/* change index of update side */
-		change_update_index(mng_info, id);
+	/**
+	 * decide classifier information of the current cycle If at least,
+	 * one rx port, one tx port and one classifier_table exist, then start
+	 * classifying. If not, stop classifying.
+	 */
+	cmp_info = mng_info->cmp_infos + mng_info->ref_index;
+	clsd_data_rx = &cmp_info->classified_data_rx;
+	clsd_data_tx = cmp_info->classified_data_tx;
 
-		/**
-		 * decide classifier information of the current cycle
-		 * If at least, one rx port, one tx port and one
-		 * classifier_table exist, then start classifying.
-		 * If not, stop classifying.
-		 */
-		cmp_info = mng_info->cmp_infos + mng_info->ref_index;
-		clsd_data_rx = &cmp_info->classified_data_rx;
-		clsd_data_tx = cmp_info->classified_data_tx;
-
-		/**
-		 * Perform condition check if reception/transmission
-		 * of packet should be done or not
-		 */
-		if (!(clsd_data_rx->iface_type != UNDEF &&
-				cmp_info->n_classified_data_tx >= 1 &&
+	/**
+	 * Perform condition check if reception/transmission
+	 * of packet should be done or not
+	 */
+	if (!(clsd_data_rx->iface_type != UNDEF &&
+			cmp_info->n_classified_data_tx >= 1 &&
 				cmp_info->mac_addr_entry == 1))
-			continue;
+		return SPP_RET_OK;
 
-		/* drain tx packets, if buffer is not filled for interval */
-		cur_tsc = rte_rdtsc();
-		if (unlikely(cur_tsc - prev_tsc > drain_tsc)) {
-			for (i = 0; i < cmp_info->n_classified_data_tx;
-					i++) {
-				if (likely(clsd_data_tx[i].num_pkt == 0))
-					continue;
+	/* drain tx packets, if buffer is not filled for interval */
+	cur_tsc = rte_rdtsc();
+	if (unlikely(cur_tsc - prev_tsc > drain_tsc)) {
+		for (i = 0; i < cmp_info->n_classified_data_tx; i++) {
+			if (likely(clsd_data_tx[i].num_pkt == 0))
+				continue;
 
-				RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
-						"transmit packets (drain). "
-						"index=%d, "
-						"num_pkt=%hu, "
-						"interval=%lu\n",
-						i,
-						clsd_data_tx[i].num_pkt,
-						cur_tsc - prev_tsc);
+			RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
+					"transmit packets (drain). index=%d, "
+					"num_pkt=%hu, interval=%lu\n",
+					i, clsd_data_tx[i].num_pkt,
+					cur_tsc - prev_tsc);
 				transmit_packet(&clsd_data_tx[i]);
-			}
-			prev_tsc = cur_tsc;
 		}
-
-		if (clsd_data_rx->iface_type == UNDEF)
-			continue;
-
-		/* retrieve packets */
-		n_rx = spp_eth_rx_burst(clsd_data_rx->port, 0,
-				rx_pkts, MAX_PKT_BURST);
-		if (unlikely(n_rx == 0))
-			continue;
-
-		/* classify and transmit (filled) */
-		classify_packet(rx_pkts, n_rx, cmp_info, clsd_data_tx);
+		prev_tsc = cur_tsc;
 	}
 
-	/* just in case */
-	change_update_index(mng_info, id);
+	if (clsd_data_rx->iface_type == UNDEF)
+		return SPP_RET_OK;
 
-	/* uninitialize */
-	uninit_classifier(mng_info);
+	/* retrieve packets */
+	n_rx = spp_eth_rx_burst(clsd_data_rx->port, 0, rx_pkts, MAX_PKT_BURST);
+	if (unlikely(n_rx == 0))
+		return SPP_RET_OK;
+
+	/* classify and interval that transmit burst packet */
+	classify_packet(rx_pkts, n_rx, cmp_info, clsd_data_tx);
 
 	return SPP_RET_OK;
 }

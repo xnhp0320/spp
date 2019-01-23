@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2018-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #ifndef _SPP_PROC_H_
@@ -244,8 +244,6 @@ struct iface_info {
 
 /* Manage component running in core as global variable */
 struct core_info {
-	volatile enum spp_component_type type;
-			       /* Component type */
 	int num;	       /* The number of IDs below */
 	int id[RTE_MAX_LCORE]; /* ID list of components executed on cpu core */
 };

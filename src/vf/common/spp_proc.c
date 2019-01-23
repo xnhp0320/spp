@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2018-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <unistd.h>
@@ -290,15 +290,11 @@ dump_core_info(const struct core_mng_info *core_info)
 				lcore_id, info->status,
 				info->ref_index, info->upd_index);
 
-		sprintf(str, "core[%d]-0 type=%d, num=%d", lcore_id,
-				info->core[0].type, info->core[0].num);
-		dump_buff(str, info->core[0].id,
-				sizeof(int)*info->core[0].num);
+		memset(str, 0x00, SPP_NAME_STR_LEN);
+		dump_buff(str, info->core[0].id, sizeof(int)*info->core[0].num);
 
-		sprintf(str, "core[%d]-1 type=%d, num=%d", lcore_id,
-				info->core[1].type, info->core[1].num);
-		dump_buff(str, info->core[1].id,
-				sizeof(int)*info->core[1].num);
+		sprintf(str, "core[%d]-1 num=%d", lcore_id, info->core[1].num);
+		dump_buff(str, info->core[1].id, sizeof(int)*info->core[1].num);
 	}
 }
 

@@ -235,15 +235,15 @@ spp_update_component(
 	int ret_del = -1;
 	int component_id = 0;
 	unsigned int tmp_lcore_id = 0;
-	struct spp_component_info *component = NULL;
+	struct spp_component_info *comp_info = NULL;
 	struct core_info *core = NULL;
 	struct core_mng_info *info = NULL;
-	struct spp_component_info *component_info = NULL;
+	struct spp_component_info *comp_info_base = NULL;
 	struct core_mng_info *core_info = NULL;
 	int *change_core = NULL;
 	int *change_component = NULL;
 
-	spp_get_mng_data_addr(NULL, NULL, &component_info, &core_info,
+	spp_get_mng_data_addr(NULL, NULL, &comp_info_base, &core_info,
 				&change_core, &change_component, NULL);
 
 	switch (action) {
@@ -271,12 +271,12 @@ spp_update_component(
 
 		core = &info->core[info->upd_index];
 
-		component = (component_info + component_id);
-		memset(component, 0x00, sizeof(struct spp_component_info));
-		strcpy(component->name, name);
-		component->type		= type;
-		component->lcore_id	= lcore_id;
-		component->component_id	= component_id;
+		comp_info = (comp_info_base + component_id);
+		memset(comp_info, 0x00, sizeof(struct spp_component_info));
+		strcpy(comp_info->name, name);
+		comp_info->type		= type;
+		comp_info->lcore_id	= lcore_id;
+		comp_info->component_id	= component_id;
 
 		core->id[core->num] = component_id;
 		core->num++;
@@ -290,16 +290,16 @@ spp_update_component(
 		if (component_id < 0)
 			return SPP_RET_OK;
 
-		component = (component_info + component_id);
-		tmp_lcore_id = component->lcore_id;
-		memset(component, 0x00, sizeof(struct spp_component_info));
+		comp_info = (comp_info_base + component_id);
+		tmp_lcore_id = comp_info->lcore_id;
+		memset(comp_info, 0x00, sizeof(struct spp_component_info));
 
 		info = (core_info + tmp_lcore_id);
 		core = &info->core[info->upd_index];
 
 #ifdef SPP_VF_MODULE
 		/* initialize classifier information */
-		if (component->type == SPP_COMPONENT_CLASSIFIER_MAC)
+		if (comp_info->type == SPP_COMPONENT_CLASSIFIER_MAC)
 			init_classifier_info(component_id);
 #endif /* SPP_VF_MODULE */
 
@@ -334,11 +334,11 @@ spp_update_port(enum spp_command_action action,
 	int ret_del = -1;
 	int component_id = 0;
 	int cnt = 0;
-	struct spp_component_info *component = NULL;
+	struct spp_component_info *comp_info = NULL;
 	struct spp_port_info *port_info = NULL;
 	int *num = NULL;
 	struct spp_port_info **ports = NULL;
-	struct spp_component_info *component_info = NULL;
+	struct spp_component_info *comp_info_base = NULL;
 	int *change_component = NULL;
 
 	component_id = spp_get_component_id(name);
@@ -347,17 +347,16 @@ spp_update_port(enum spp_command_action action,
 				"(component = %s)\n", name);
 		return SPP_RET_NG;
 	}
-
 	spp_get_mng_data_addr(NULL, NULL,
-			&component_info, NULL, NULL, &change_component, NULL);
-	component = (component_info + component_id);
+			&comp_info_base, NULL, NULL, &change_component, NULL);
+	comp_info = (comp_info_base + component_id);
 	port_info = get_iface_info(port->iface_type, port->iface_no);
 	if (rxtx == SPP_PORT_RXTX_RX) {
-		num = &component->num_rx_port;
-		ports = component->rx_ports;
+		num = &comp_info->num_rx_port;
+		ports = comp_info->rx_ports;
 	} else {
-		num = &component->num_tx_port;
-		ports = component->tx_ports;
+		num = &comp_info->num_tx_port;
+		ports = comp_info->tx_ports;
 	}
 
 	switch (action) {
@@ -471,6 +470,8 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 	int ret;
 	int lcore_id, cnt;
 	struct core_info *core = NULL;
+	struct spp_component_info *comp_info_base = NULL;
+	struct spp_component_info *comp_info = NULL;
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		if (spp_get_core_status(lcore_id) == SPP_CORE_UNUSE)
@@ -493,8 +494,11 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 		}
 
 		for (cnt = 0; cnt < core->num; cnt++) {
+			spp_get_mng_data_addr(NULL, NULL, &comp_info_base,
+							NULL, NULL, NULL, NULL);
+			comp_info = (comp_info_base + core->id[cnt]);
 #ifdef SPP_VF_MODULE
-			if (core->type == SPP_COMPONENT_CLASSIFIER_MAC) {
+			if (comp_info->type == SPP_COMPONENT_CLASSIFIER_MAC) {
 				ret = spp_classifier_get_component_status(
 						lcore_id,
 						core->id[cnt],
@@ -516,7 +520,7 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 				RTE_LOG(ERR, APP, "Cannot iterate core "
 						"information. "
 						"(core = %d, type = %d)\n",
-						lcore_id, core->type);
+						lcore_id, comp_info->type);
 				return SPP_RET_NG;
 			}
 		}

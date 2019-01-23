@@ -380,15 +380,15 @@ int spp_vf_add_vhost_pmd(int index, int client);
 enum spp_core_status spp_get_core_status(unsigned int lcore_id);
 
 /**
- * Get component type of target core
+ * Get component type of target component_info
  *
- * @param lcore_id
- *  Logical core ID.
+ * @param id
+ *  component ID.
  *
  * @return
- *  Type of component executed on specified logical core
+ *  Type of component executed
  */
-enum spp_component_type spp_get_component_type(unsigned int lcore_id);
+enum spp_component_type spp_get_component_type(int id);
 
 /**
  * Run check_core_status() for SPP_CORE_STATUS_CHECK_MAX times with
@@ -488,18 +488,6 @@ void print_ring_latency_stats(void);
 
 /* Remove sock file if spp is not running */
 void  del_vhost_sockfile(struct spp_port_info *vhost);
-
-/**
- * Get component type of target core
- *
- * @param lcore_id
- *  Logical core ID.
- *
- * @return
- *  Type of component executed on specified logical core
- */
-enum spp_component_type
-spp_get_component_type(unsigned int lcore_id);
 
 /**
  * Get core ID of target component

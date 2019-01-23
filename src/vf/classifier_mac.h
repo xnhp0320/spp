@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #ifndef _CLASSIFIER_MAC_H_
@@ -26,6 +26,15 @@ struct spp_iterate_classifier_table_params;
  * @retval SPP_RET_NG failed.
  */
 int spp_classifier_mac_init(void);
+
+/**
+ * initialize classifier information.
+ *
+ * @param component_id
+ *  The unique component ID.
+ *
+ */
+void init_classifier_info(int component_id);
 
 /**
  * classifier(mac address) update component info.

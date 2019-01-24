@@ -26,19 +26,13 @@ class SppVf(object):
         self.spp_ctl_cli = spp_ctl_cli
         self.sec_id = sec_id
 
-        # Update 'self.worker_names' and 'self.unused_core_ids' each time
+        # Update 'self.worker_names' each time
         # 'self.run()' is called if it is 'False'.
         # True to 'True' if you do not wait for spp_vf's response.
         self.use_cache = use_cache
 
         # Names and core IDs of worker threads
         vf_status = self._get_status(self.sec_id)
-
-        core_ids = vf_status['core_ids']
-        for wk in vf_status['workers']:
-            if wk['core_id'] in core_ids:
-                core_ids.remove(wk['core_id'])
-        self.unused_core_ids = core_ids  # used while completion to exclude
 
         self.workers = vf_status['workers']
         self.worker_names = [attr['name'] for attr in vf_status['workers']]
@@ -49,12 +43,6 @@ class SppVf(object):
         # update status each time if configured not to use cache
         if self.use_cache is False:
             vf_status = self._get_status(self.sec_id)
-
-            core_ids = vf_status['core_ids']
-            for wk in vf_status['workers']:
-                if wk['core_id'] in core_ids:
-                    core_ids.remove(wk['core_id'])
-            self.unused_core_ids = core_ids  # used while completion to exclude
 
             self.workers = vf_status['workers']
             self.worker_names = [attr['name'] for attr in vf_status['workers']]
@@ -198,19 +186,18 @@ class SppVf(object):
         behaviour of spp_vf, it is enough to return worker's name and core
         IDs as the status, but might need to be update for future updates.
 
-        # return worker's name and used core IDs, and all of core IDs.
+        # return worker's name and used core IDs.
         {
           'workers': [
             {'name': 'fw1', 'core_id': 5},
             {'name': 'mg1', 'core_id': 6},
             ...
-          ],
-          'core_ids': [5, 6, 7, ...]
+          ]
         }
 
         """
 
-        status = {'workers': [], 'core_ids': []}
+        status = {'workers': []}
         res = self.spp_ctl_cli.get('vfs/%d' % self.sec_id)
         if res is not None:
             if res.status_code == 200:
@@ -223,7 +210,6 @@ class SppVf(object):
                                 status['workers'].append(
                                         {'name': wk['name'],
                                             'core_id': wk['core']})
-                            status['core_ids'].append(wk['core'])
 
         return status
 
@@ -250,7 +236,6 @@ class SppVf(object):
                     print("Succeeded to start component '%s' on core:%d"
                           % (req_params['name'], req_params['core']))
                     self.worker_names.append(req_params['name'])
-                    self.unused_core_ids.remove(req_params['core'])
                 elif res.status_code in error_codes:
                     pass
                 else:
@@ -269,7 +254,6 @@ class SppVf(object):
                         self.worker_names.remove(params[1])
                     for wk in self.workers:
                         if wk['name'] == params[1]:
-                            self.unused_core_ids.append(wk['core_id'])
                             self.workers.remove(wk)
                             break
                 elif res.status_code in error_codes:
@@ -382,11 +366,6 @@ class SppVf(object):
                     for kw in self.worker_names:
                         if kw.startswith(sub_tokens[2]):
                             res.append(kw)
-            elif len(sub_tokens) == 4:
-                if sub_tokens[1] == 'start':
-                    for cid in [str(i) for i in self.unused_core_ids]:
-                        if cid.startswith(sub_tokens[3]):
-                            res.append(cid)
             elif len(sub_tokens) == 5:
                 if sub_tokens[1] == 'start':
                     for wk_type in self.WORKER_TYPES:

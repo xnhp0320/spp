@@ -321,7 +321,55 @@ spp_update_component(
 	return ret;
 }
 
+/* Check if over the maximum num of rx and tx ports of component. */
+static int
+check_port_count(int component_type, enum spp_port_rxtx rxtx, int num_rx,
+								int num_tx)
+{
+	RTE_LOG(INFO, SPP_COMMAND_PROC, "port count, port_type=%d,"
+				" rx=%d, tx=%d\n", rxtx, num_rx, num_tx);
+	if (rxtx == SPP_PORT_RXTX_RX)
+		num_rx++;
+	else
+		num_tx++;
+	/* Add rx or tx port appointed in port_type. */
+	RTE_LOG(INFO, SPP_COMMAND_PROC, "Num of ports after count up,"
+				" port_type=%d, rx=%d, tx=%d\n",
+				rxtx, num_rx, num_tx);
+	switch (component_type) {
+	case SPP_COMPONENT_FORWARD:
+		if (num_rx > 1 || num_tx > 1)
+			return SPP_RET_NG;
+		break;
+
+	case SPP_COMPONENT_MERGE:
+		if (num_tx > 1)
+			return SPP_RET_NG;
+		break;
+
+	case SPP_COMPONENT_CLASSIFIER_MAC:
+		if (num_rx > 1)
+			return SPP_RET_NG;
+		break;
+
+	case SPP_COMPONENT_MIRROR:
+		if (num_rx > 1 || num_tx > 2)
+			return SPP_RET_NG;
+		break;
+
+	default:
+		/* Illegal component type. */
+		return SPP_RET_NG;
+	}
+
+	return SPP_RET_OK;
+}
+
 /* Port add or del to execute it */
+/**
+ * TODO(Ogasawara) The name `action` should be revised to be more
+ * appropriate one.
+ */
 static int
 spp_update_port(enum spp_command_action action,
 		const struct spp_port_index *port,
@@ -361,8 +409,14 @@ spp_update_port(enum spp_command_action action,
 
 	switch (action) {
 	case SPP_CMD_ACTION_ADD:
+		/* Check if over the maximum num of ports of component. */
+		if (check_port_count(comp_info->type, rxtx,
+				comp_info->num_rx_port,
+				comp_info->num_tx_port) != SPP_RET_OK)
+			return SPP_RET_NG;
+
 		ret_check = check_port_element(port_info, *num, ports);
-		/* registered check */
+		/* Check whether a port has been already registered. */
 		if (ret_check >= SPP_RET_OK) {
 			/* registered */
 			if (ability->ope == SPP_PORT_ABILITY_OPE_ADD_VLANTAG) {

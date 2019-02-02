@@ -44,6 +44,7 @@
 #define DEFAULT_FILE_LIMIT 1073741824 /* 1GiB */
 #define PORT_STR_SIZE 16
 #define RING_SIZE 8192
+#define MAX_PCAP_BURST 256
 /* macro */
 /* Ensure snaplen not to be over the maximum size */
 #define TRANCATE_SNAPLEN(a, b) (((a) < (b))?(a):(b))
@@ -761,7 +762,7 @@ static int pcap_proc_receive(int lcore_id)
 	int nb_rx = 0;
 	int nb_tx = 0;
 	struct spp_port_info *rx;
-	struct rte_mbuf *bufs[MAX_PKT_BURST];
+	struct rte_mbuf *bufs[MAX_PCAP_BURST];
 	struct pcap_mng_info *info = &g_pcap_info[lcore_id];
 	struct rte_ring *write_ring = g_pcap_option.cap_ring;
 
@@ -791,7 +792,7 @@ static int pcap_proc_receive(int lcore_id)
 	/* Receive packets */
 	rx = &g_pcap_option.port_cap;
 
-	nb_rx = spp_eth_rx_burst(rx->dpdk_port, 0, bufs, MAX_PKT_BURST);
+	nb_rx = spp_eth_rx_burst(rx->dpdk_port, 0, bufs, MAX_PCAP_BURST);
 	if (unlikely(nb_rx == 0))
 		return SPP_RET_OK;
 
@@ -815,7 +816,7 @@ static int pcap_proc_write(int lcore_id)
 	int ret = SPP_RET_OK;
 	int buf;
 	int nb_rx = 0;
-	struct rte_mbuf *bufs[MAX_PKT_BURST];
+	struct rte_mbuf *bufs[MAX_PCAP_BURST];
 	struct rte_mbuf *mbuf = NULL;
 	struct pcap_mng_info *info = &g_pcap_info[lcore_id];
 	struct rte_ring *read_ring = g_pcap_option.cap_ring;
@@ -842,7 +843,7 @@ static int pcap_proc_write(int lcore_id)
 	}
 
 	/* Read packets */
-	nb_rx =  rte_ring_dequeue_bulk(read_ring, (void *)bufs, MAX_PKT_BURST,
+	nb_rx =  rte_ring_dequeue_bulk(read_ring, (void *)bufs, MAX_PCAP_BURST,
 									NULL);
 	if (unlikely(nb_rx == 0))
 		return SPP_RET_OK;
@@ -865,6 +866,7 @@ static int pcap_proc_write(int lcore_id)
 	/* mbuf free */
 	for (buf = 0; buf < nb_rx; buf++)
 		rte_pktmbuf_free(bufs[buf]);
+
 	return ret;
 }
 

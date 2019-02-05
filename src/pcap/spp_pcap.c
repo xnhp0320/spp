@@ -797,7 +797,7 @@ static int pcap_proc_receive(int lcore_id)
 		return SPP_RET_OK;
 
 	/* Write ring packets */
-	nb_tx = rte_ring_enqueue_bulk(write_ring, (void *)bufs, nb_rx, NULL);
+	nb_tx = rte_ring_enqueue_burst(write_ring, (void *)bufs, nb_rx, NULL);
 
 	/* Discard remained packets to release mbuf */
 	if (unlikely(nb_tx < nb_rx)) {
@@ -822,15 +822,8 @@ static int pcap_proc_write(int lcore_id)
 	struct rte_ring *read_ring = g_pcap_option.cap_ring;
 
 	if (g_capture_status == SPP_CAPTURE_IDLE) {
-		if (info->status == SPP_CAPTURE_RUNNING) {
-			RTE_LOG(DEBUG, SPP_PCAP, "write[%d] run->idle\n",
-								lcore_id);
-			info->status = SPP_CAPTURE_IDLE;
-			if (file_compression_operation(info, CLOSE_MODE)
-							!= SPP_RET_OK)
-				return SPP_RET_NG;
-		}
-		return SPP_RET_OK;
+		if (info->status == SPP_CAPTURE_IDLE)
+			return SPP_RET_OK;
 	}
 	if (info->status == SPP_CAPTURE_IDLE) {
 		RTE_LOG(DEBUG, SPP_PCAP, "write[%d] idle->run\n", lcore_id);
@@ -843,10 +836,19 @@ static int pcap_proc_write(int lcore_id)
 	}
 
 	/* Read packets */
-	nb_rx =  rte_ring_dequeue_bulk(read_ring, (void *)bufs, MAX_PCAP_BURST,
-									NULL);
-	if (unlikely(nb_rx == 0))
+	nb_rx =  rte_ring_mc_dequeue_burst(read_ring, (void *)bufs,
+					   MAX_PCAP_BURST, NULL);
+	if (unlikely(nb_rx == 0)) {
+		if (g_capture_status == SPP_CAPTURE_IDLE) {
+			RTE_LOG(DEBUG, SPP_PCAP, "write[%d] run->idle\n",
+								lcore_id);
+			info->status = SPP_CAPTURE_IDLE;
+			if (file_compression_operation(info, CLOSE_MODE)
+							!= SPP_RET_OK)
+				return SPP_RET_NG;
+		}
 		return SPP_RET_OK;
+	}
 
 	for (buf = 0; buf < nb_rx; buf++) {
 		mbuf = bufs[buf];

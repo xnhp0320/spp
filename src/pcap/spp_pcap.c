@@ -43,7 +43,7 @@
 #define DEFAULT_OUTPUT_DIR "/tmp"
 #define DEFAULT_FILE_LIMIT 1073741824 /* 1GiB */
 #define PORT_STR_SIZE 16
-#define RING_SIZE 8192
+#define RING_SIZE 16384
 #define MAX_PCAP_BURST 256
 /* macro */
 /* Ensure snaplen not to be over the maximum size */
@@ -138,6 +138,12 @@ struct pcap_mng_info {
 	uint64_t file_size;            /* file write size */
 };
 
+/* Pcap status info. */
+struct pcap_status_info {
+	int thread_cnt;		/* thread count */
+	int start_up_cnt;	/* thread start up count */
+};
+
 /* Logical core ID for main thread */
 static unsigned int g_main_lcore_id = 0xffffffff;
 
@@ -161,6 +167,12 @@ static struct pcap_option g_pcap_option;
 
 /* pcap managed info */
 static struct pcap_mng_info g_pcap_info[RTE_MAX_LCORE];
+
+/* pcap thread status info */
+struct pcap_status_info g_pcap_thread_info;
+
+/* pcap total write packet count */
+static long long g_total_write[RTE_MAX_LCORE];
 
 /* Print help message */
 static void
@@ -765,13 +777,20 @@ static int pcap_proc_receive(int lcore_id)
 	struct rte_mbuf *bufs[MAX_PCAP_BURST];
 	struct pcap_mng_info *info = &g_pcap_info[lcore_id];
 	struct rte_ring *write_ring = g_pcap_option.cap_ring;
+	static long long total_rx;
+	static long long total_drop;
 
 	if (g_capture_request == SPP_CAPTURE_IDLE) {
 		if (info->status == SPP_CAPTURE_RUNNING) {
 			RTE_LOG(DEBUG, SPP_PCAP, "recive[%d], run->idle\n",
 								lcore_id);
+			RTE_LOG(INFO, SPP_PCAP, "recive[%d], total_rx=%llu, "
+						"total_drop=%llu\n", lcore_id,
+						total_rx, total_drop);
 			info->status = SPP_CAPTURE_IDLE;
 			g_capture_status = SPP_CAPTURE_IDLE;
+			if (g_pcap_thread_info.start_up_cnt != 0)
+				g_pcap_thread_info.start_up_cnt -= 1;
 		}
 		return SPP_RET_OK;
 	}
@@ -787,7 +806,14 @@ static int pcap_proc_receive(int lcore_id)
 		RTE_LOG(DEBUG, SPP_PCAP, "recive[%d], idle->run\n", lcore_id);
 		RTE_LOG(DEBUG, SPP_PCAP, "recive[%d], start time=%s\n",
 			lcore_id, g_pcap_option.compress_file_date);
+		g_pcap_thread_info.start_up_cnt += 1;
+		total_rx = 0;
+		total_drop = 0;
 	}
+
+	/* Write thread start up wait. */
+	if (g_pcap_thread_info.thread_cnt > g_pcap_thread_info.start_up_cnt)
+		return SPP_RET_OK;
 
 	/* Receive packets */
 	rx = &g_pcap_option.port_cap;
@@ -806,6 +832,9 @@ static int pcap_proc_receive(int lcore_id)
 		for (buf = nb_tx; buf < nb_rx; buf++)
 			rte_pktmbuf_free(bufs[buf]);
 	}
+
+	total_rx += nb_rx;
+	total_drop += nb_rx - nb_tx;
 
 	return SPP_RET_OK;
 }
@@ -833,6 +862,8 @@ static int pcap_proc_write(int lcore_id)
 			info->status = SPP_CAPTURE_IDLE;
 			return SPP_RET_NG;
 		}
+		g_pcap_thread_info.start_up_cnt += 1;
+		g_total_write[lcore_id] = 0;
 	}
 
 	/* Read packets */
@@ -842,7 +873,11 @@ static int pcap_proc_write(int lcore_id)
 		if (g_capture_status == SPP_CAPTURE_IDLE) {
 			RTE_LOG(DEBUG, SPP_PCAP, "write[%d] run->idle\n",
 								lcore_id);
+			RTE_LOG(INFO, SPP_PCAP, "write[%d] total_write=%llu\n",
+					lcore_id, g_total_write[lcore_id]);
 			info->status = SPP_CAPTURE_IDLE;
+			if (g_pcap_thread_info.start_up_cnt != 0)
+				g_pcap_thread_info.start_up_cnt -= 1;
 			if (file_compression_operation(info, CLOSE_MODE)
 							!= SPP_RET_OK)
 				return SPP_RET_NG;
@@ -869,6 +904,7 @@ static int pcap_proc_write(int lcore_id)
 	for (buf = 0; buf < nb_rx; buf++)
 		rte_pktmbuf_free(bufs[buf]);
 
+	g_total_write[lcore_id] += nb_rx;
 	return ret;
 }
 
@@ -1038,7 +1074,10 @@ main(int argc, char *argv[])
 		/* Start worker threads of recive or write */
 		unsigned int lcore_id = 0;
 		unsigned int thread_no = 0;
+		g_pcap_thread_info.thread_cnt = 0;
+		g_pcap_thread_info.start_up_cnt = 0;
 		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+			g_pcap_thread_info.thread_cnt += 1;
 			g_pcap_info[lcore_id].thread_no = thread_no++;
 			rte_eal_remote_launch(slave_main, NULL, lcore_id);
 		}

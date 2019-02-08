@@ -117,9 +117,10 @@ class Shell(cmd.Cmd, object):
             self.secondaries['mirror'][sec_id] = mirror.SppMirror(
                     self.spp_ctl_cli, sec_id)
 
-        self.spp_pcaps = {}
+        self.secondaries['pcap'] = {}
         for sec_id in self.get_sec_ids('pcap'):
-            self.spp_pcaps[sec_id] = pcap.SppPcap(self.spp_ctl_cli, sec_id)
+            self.secondaries['pcap'][sec_id] = pcap.SppPcap(
+                    self.spp_ctl_cli, sec_id)
 
     # Called everytime after running command. `stop` is returned from `do_*`
     # method and SPP CLI is terminated if it is True. It means that only
@@ -618,7 +619,7 @@ class Shell(cmd.Cmd, object):
         if len(cmds) < 2:
             print("Required an ID and ';' before the command.")
         elif str.isdigit(cmds[0]):
-            self.spp_pcaps[int(cmds[0])].run(cmds[1])
+            self.secondaries['pcap'][int(cmds[0])].run(cmds[1])
         else:
             print('Invalid command: %s' % tmparg)
 
@@ -632,8 +633,9 @@ class Shell(cmd.Cmd, object):
             # Add SppPcap of sec_id if it is not exist
             sec_ids = self.get_sec_ids('pcap')
             for idx in sec_ids:
-                if self.spp_pcaps[idx] is None:
-                    self.spp_pcaps[idx] = pcap.SppPcap(self.spp_ctl_cli, idx)
+                if self.secondaries['pcap'][idx] is None:
+                    self.secondaries['pcap'][idx] = pcap.SppPcap(
+                            self.spp_ctl_cli, idx)
 
             if len(line.split()) == 1:
                 res = [str(i)+';' for i in sec_ids]
@@ -650,10 +652,11 @@ class Shell(cmd.Cmd, object):
                 idx = int(first_tokens[1])
 
                 # Add SppPcap of sec_id if it is not exist
-                if self.spp_pcaps[idx] is None:
-                    self.spp_pcaps[idx] = pcap.SppPcap(self.spp_ctl_cli, idx)
+                if self.secondaries['pcap'][idx] is None:
+                    self.secondaries['pcap'][idx] = pcap.SppPcap(
+                            self.spp_ctl_cli, idx)
 
-                return self.spp_pcaps[idx].complete(
+                return self.secondaries['pcap'][idx].complete(
                         self.get_sec_ids('pcap'), text, line, begidx, endidx)
 
     def do_record(self, fname):

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #ifndef _COMMAND_DEC_H_
@@ -25,9 +25,6 @@
 
 /** command value string buffer size (include null char) */
 #define SPP_CMD_VALUE_BUFSZ 111
-
-/** string that specify unused */
-#define SPP_CMD_UNUSE "unuse"
 
 /** decode error code */
 enum spp_command_decode_error_code {

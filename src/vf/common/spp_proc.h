@@ -67,16 +67,6 @@
 /* Sampling interval timer for latency evaluation */
 #define SPP_RING_LATENCY_STATS_SAMPLING_INTERVAL 1000000
 
-/**
- * TODO(Yamashita) change type names.
- *  "merge" -> "merger", "forward" -> "forwarder".
- */
-/* Name string for each component */
-#define CORE_TYPE_CLASSIFIER_MAC_STR "classifier_mac"
-#define CORE_TYPE_MERGE_STR	     "merge"
-#define CORE_TYPE_FORWARD_STR	     "forward"
-#define CORE_TYPE_MIRROR_STR	     "mirror"
-
 /* State on component */
 enum spp_core_status {
 	SPP_CORE_UNUSE,        /**< Not used */

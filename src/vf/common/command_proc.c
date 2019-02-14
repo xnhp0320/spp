@@ -30,10 +30,7 @@
 #define CMD_REQ_BUF_INIT_SIZE 2048
 #define CMD_RES_BUF_INIT_SIZE 2048
 
-#define COMMAND_RESP_LIST_EMPTY { "", NULL }
-
-#define JSON_COMMA                ", "
-#define JSON_APPEND_COMMA(flg)    ((flg)?JSON_COMMA:"")
+#define JSON_APPEND_COMMA(flg)    ((flg)?", ":"")
 #define JSON_APPEND_VALUE(format) "%s\"%s\": "format
 #define JSON_APPEND_ARRAY         "%s\"%s\": [ %s ]"
 #define JSON_APPEND_BLOCK         "%s\"%s\": { %s }"
@@ -625,7 +622,7 @@ spp_get_dpdk_port(enum port_type iface_type, int iface_no)
 static int
 append_json_comma(char **output)
 {
-	*output = spp_strbuf_append(*output, JSON_COMMA, strlen(JSON_COMMA));
+	*output = spp_strbuf_append(*output, ", ", strlen(", "));
 	if (unlikely(*output == NULL)) {
 		RTE_LOG(ERR, SPP_COMMAND_PROC,
 				"JSON's comma failed to add.\n");

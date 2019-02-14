@@ -10,7 +10,11 @@
 
 #include "string_buffer.h"
 
-#define RTE_LOGTYPE_SPP_STRING_BUFF RTE_LOGTYPE_USER1
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_SPP_STRING_BUFF RTE_LOGTYPE_USER2
 
 /* get message buffer capacity */
 static inline size_t

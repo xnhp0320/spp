@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <unistd.h>
@@ -19,7 +19,11 @@
 
 #define NS_PER_SEC 1E9
 
-#define RTE_LOGTYPE_SPP_RING_LATENCY_STATS RTE_LOGTYPE_USER1
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_SPP_RING_LATENCY_STATS RTE_LOGTYPE_USER2
 
 #ifdef SPP_RINGLATENCYSTATS_ENABLE
 

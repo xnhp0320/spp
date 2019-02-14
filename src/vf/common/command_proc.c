@@ -21,8 +21,11 @@
 #include "command_dec.h"
 #include "command_proc.h"
 
-#define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER1
-#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER2
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER2
 
 /* request message initial size */
 #define CMD_RES_ERR_MSG_SIZE  128
@@ -143,13 +146,14 @@ spp_update_classifier_table(
 	int64_t ret_mac = 0;
 	uint64_t mac_addr = 0;
 
-	RTE_LOG(DEBUG, APP, "update_classifier_table "
+	RTE_LOG(DEBUG, SPP_COMMAND_PROC, "update_classifier_table "
 			"( type = mac, mac addr = %s, port = %d:%d )\n",
 			mac_addr_str, port->iface_type, port->iface_no);
 
 	ret_mac = spp_change_mac_str_to_int64(mac_addr_str);
 	if (unlikely(ret_mac == -1)) {
-		RTE_LOG(ERR, APP, "MAC address format error. ( mac = %s )\n",
+		RTE_LOG(ERR, SPP_COMMAND_PROC,
+			"MAC address format error. ( mac = %s )\n",
 			mac_addr_str);
 		return SPP_RET_NG;
 	}
@@ -157,12 +161,13 @@ spp_update_classifier_table(
 
 	port_info = get_iface_info(port->iface_type, port->iface_no);
 	if (unlikely(port_info == NULL)) {
-		RTE_LOG(ERR, APP, "No port. ( port = %d:%d )\n",
+		RTE_LOG(ERR, SPP_COMMAND_PROC, "No port. ( port = %d:%d )\n",
 				port->iface_type, port->iface_no);
 		return SPP_RET_NG;
 	}
 	if (unlikely(port_info->iface_type == UNDEF)) {
-		RTE_LOG(ERR, APP, "Port not added. ( port = %d:%d )\n",
+		RTE_LOG(ERR, SPP_COMMAND_PROC,
+				"Port not added. ( port = %d:%d )\n",
 				port->iface_type, port->iface_no);
 		return SPP_RET_NG;
 	}
@@ -172,14 +177,15 @@ spp_update_classifier_table(
 		if ((port_info->class_id.vlantag.vid != 0) &&
 				unlikely(port_info->class_id.vlantag.vid !=
 				vid)) {
-			RTE_LOG(ERR, APP, "VLAN ID is different. "
+			RTE_LOG(ERR, SPP_COMMAND_PROC, "VLAN ID is different. "
 					"( vid = %d )\n", vid);
 			return SPP_RET_NG;
 		}
 		if ((port_info->class_id.mac_addr != 0) &&
 			unlikely(port_info->class_id.mac_addr !=
 					mac_addr)) {
-			RTE_LOG(ERR, APP, "MAC address is different. "
+			RTE_LOG(ERR, SPP_COMMAND_PROC,
+					"MAC address is different. "
 					"( mac = %s )\n", mac_addr_str);
 			return SPP_RET_NG;
 		}
@@ -193,14 +199,14 @@ spp_update_classifier_table(
 		/* Setting */
 		if (unlikely(port_info->class_id.vlantag.vid !=
 				ETH_VLAN_ID_MAX)) {
-			RTE_LOG(ERR, APP, "Port in used. "
+			RTE_LOG(ERR, SPP_COMMAND_PROC, "Port in used. "
 					"( port = %d:%d, vlan = %d != %d )\n",
 					port->iface_type, port->iface_no,
 					port_info->class_id.vlantag.vid, vid);
 			return SPP_RET_NG;
 		}
 		if (unlikely(port_info->class_id.mac_addr != 0)) {
-			RTE_LOG(ERR, APP, "Port in used. "
+			RTE_LOG(ERR, SPP_COMMAND_PROC, "Port in used. "
 					"( port = %d:%d, mac = %s != %s )\n",
 					port->iface_type, port->iface_no,
 					port_info->class_id.mac_addr_str,
@@ -247,22 +253,23 @@ spp_update_component(
 	case SPP_CMD_ACTION_START:
 		info = (core_info + lcore_id);
 		if (info->status == SPP_CORE_UNUSE) {
-			RTE_LOG(ERR, APP, "Core %d is not available because "
-				"it is in SPP_CORE_UNUSE state.\n", lcore_id);
+			RTE_LOG(ERR, SPP_COMMAND_PROC,
+				"Core %d is not available because it is in "
+				"SPP_CORE_UNUSE state.\n", lcore_id);
 			return SPP_RET_NG;
 		}
 
 		component_id = spp_get_component_id(name);
 		if (component_id >= 0) {
-			RTE_LOG(ERR, APP, "Component name '%s' is already "
-				"used.\n", name);
+			RTE_LOG(ERR, SPP_COMMAND_PROC,
+				"Component name '%s' is already used.\n", name);
 			return SPP_RET_NG;
 		}
 
 		component_id = get_free_component();
 		if (component_id < 0) {
-			RTE_LOG(ERR, APP, "Cannot assign component over the "
-				"maximum number.\n");
+			RTE_LOG(ERR, SPP_COMMAND_PROC, "Cannot assign "
+				"component over the maximum number.\n");
 			return SPP_RET_NG;
 		}
 
@@ -388,8 +395,8 @@ spp_update_port(enum spp_command_action action,
 
 	component_id = spp_get_component_id(name);
 	if (component_id < 0) {
-		RTE_LOG(ERR, APP, "Unknown component by port command. "
-				"(component = %s)\n", name);
+		RTE_LOG(ERR, SPP_COMMAND_PROC, "Unknown component by port "
+				"command. (component = %s)\n", name);
 		return SPP_RET_NG;
 	}
 	spp_get_mng_data_addr(NULL, NULL,
@@ -422,7 +429,8 @@ spp_update_port(enum spp_command_action action,
 					    SPP_PORT_ABILITY_OPE_ADD_VLANTAG))
 					cnt++;
 				if (cnt >= SPP_PORT_ABILITY_MAX) {
-					RTE_LOG(ERR, APP, "update VLAN tag "
+					RTE_LOG(ERR, SPP_COMMAND_PROC,
+						"update VLAN tag "
 						"Non-registratio\n");
 					return SPP_RET_NG;
 				}
@@ -436,8 +444,8 @@ spp_update_port(enum spp_command_action action,
 		}
 
 		if (*num >= RTE_MAX_ETHPORTS) {
-			RTE_LOG(ERR, APP, "Cannot assign port over the "
-				"maximum number.\n");
+			RTE_LOG(ERR, SPP_COMMAND_PROC, "Cannot assign port "
+					"over the maximum number.\n");
 			return SPP_RET_NG;
 		}
 
@@ -448,7 +456,7 @@ spp_update_port(enum spp_command_action action,
 				cnt++;
 			}
 			if (cnt >= SPP_PORT_ABILITY_MAX) {
-				RTE_LOG(ERR, APP,
+				RTE_LOG(ERR, SPP_COMMAND_PROC,
 						"No space of port ability.\n");
 				return SPP_RET_NG;
 			}
@@ -535,8 +543,8 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 				"", SPP_TYPE_UNUSE_STR,
 				0, NULL, 0, NULL);
 			if (unlikely(ret != 0)) {
-				RTE_LOG(ERR, APP, "Cannot iterate core "
-						"information. "
+				RTE_LOG(ERR, SPP_COMMAND_PROC, "Cannot iterate"
+						" core information. "
 						"(core = %d, type = %d)\n",
 						lcore_id, SPP_COMPONENT_UNUSE);
 				return SPP_RET_NG;
@@ -568,8 +576,8 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 						params);
 #endif /* SPP_MIRROR_MODULE */
 			if (unlikely(ret != 0)) {
-				RTE_LOG(ERR, APP, "Cannot iterate core "
-						"information. "
+				RTE_LOG(ERR, SPP_COMMAND_PROC, "Cannot iterate"
+						" core information. "
 						"(core = %d, type = %d)\n",
 						lcore_id, comp_info->type);
 				return SPP_RET_NG;
@@ -590,7 +598,8 @@ spp_iterate_classifier_table(
 
 	ret = spp_classifier_mac_iterate_table(params);
 	if (unlikely(ret != 0)) {
-		RTE_LOG(ERR, APP, "Cannot iterate classifier_mac_table.\n");
+		RTE_LOG(ERR, SPP_COMMAND_PROC,
+				"Cannot iterate classifier_mac_table.\n");
 		return SPP_RET_NG;
 	}
 

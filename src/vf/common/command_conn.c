@@ -16,7 +16,11 @@
 #include "string_buffer.h"
 #include "command_conn.h"
 
-#define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER1
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER2
 
 /* one receive message size */
 #define MESSAGE_BUFFER_BLOCK_SIZE 2048

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <rte_ether.h>
@@ -10,6 +10,8 @@
 
 #include "spp_port.h"
 #include "ringlatencystats.h"
+
+#define RTE_LOGTYPE_SPP_PORT RTE_LOGTYPE_USER2
 
 /* Port ability management information */
 struct port_ability_mng_info {
@@ -109,7 +111,7 @@ add_vlantag_packet(
 		new_ether = (struct ether_hdr *)rte_pktmbuf_prepend(pkt,
 				sizeof(struct vlan_hdr));
 		if (unlikely(new_ether == NULL)) {
-			RTE_LOG(ERR, PORT, "Failed to "
+			RTE_LOG(ERR, SPP_PORT, "Failed to "
 					"get additional header area.\n");
 			return SPP_RET_NG;
 		}
@@ -136,7 +138,7 @@ add_vlantag_all_packets(
 	for (cnt = 0; cnt < nb_pkts; cnt++) {
 		ret = add_vlantag_packet(pkts[cnt], data);
 		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, PORT,
+			RTE_LOG(ERR, SPP_PORT,
 					"Failed to add VLAN tag."
 					"(pkts %d/%d)\n", cnt, nb_pkts);
 			break;
@@ -161,7 +163,7 @@ del_vlantag_packet(
 		new_ether = (struct ether_hdr *)rte_pktmbuf_adj(pkt,
 				sizeof(struct vlan_hdr));
 		if (unlikely(new_ether == NULL)) {
-			RTE_LOG(ERR, PORT, "Failed to "
+			RTE_LOG(ERR, SPP_PORT, "Failed to "
 					"delete unnecessary header area.\n");
 			return SPP_RET_NG;
 		}
@@ -188,7 +190,7 @@ del_vlantag_all_packets(
 	for (cnt = 0; cnt < nb_pkts; cnt++) {
 		ret = del_vlantag_packet(pkts[cnt], data);
 		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, PORT,
+			RTE_LOG(ERR, SPP_PORT,
 					"Failed to del VLAN tag."
 					"(pkts %d/%d)\n", cnt, nb_pkts);
 			break;

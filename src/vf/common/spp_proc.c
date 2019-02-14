@@ -25,7 +25,11 @@
 #include "../../mirror/spp_mirror.h"
 #endif /* SPP_MIRROR_MODULE */
 
-#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_SPP_PROC RTE_LOGTYPE_USER2
 
 /* Manage data to addoress */
 struct manage_data_addr_info {
@@ -56,10 +60,10 @@ dump_buff(const char *name, const void *addr, const size_t size)
 	const uint32_t *buff = addr;
 
 	if ((name != NULL) && (name[0] != '\0'))
-		RTE_LOG(DEBUG, APP, "dump buff. (%s)\n", name);
+		RTE_LOG(DEBUG, SPP_PROC, "dump buff. (%s)\n", name);
 
 	for (cnt = 0; cnt < max; cnt += 16) {
-		RTE_LOG(DEBUG, APP, "[%p]"
+		RTE_LOG(DEBUG, SPP_PROC, "[%p]"
 				" %08x %08x %08x %08x %08x %08x %08x %08x"
 				" %08x %08x %08x %08x %08x %08x %08x %08x",
 				&buff[cnt],
@@ -86,7 +90,7 @@ spp_vf_add_ring_pmd(int ring_id)
 	/* Lookup ring of given id */
 	ring = rte_ring_lookup(get_rx_queue_name(ring_id));
 	if (unlikely(ring == NULL)) {
-		RTE_LOG(ERR, APP,
+		RTE_LOG(ERR, SPP_PROC,
 			"Cannot get RX ring - is server process running?\n");
 		return SPP_RET_NG;
 	}
@@ -98,7 +102,7 @@ spp_vf_add_ring_pmd(int ring_id)
 	if (port_id == PORT_RESET) {
 		ring_port_id = rte_eth_from_ring(ring);
 		if (ring_port_id < 0) {
-			RTE_LOG(ERR, APP, "Cannot create eth dev with "
+			RTE_LOG(ERR, SPP_PROC, "Cannot create eth dev with "
 						"rte_eth_from_ring()\n");
 			return SPP_RET_NG;
 		}
@@ -106,7 +110,7 @@ spp_vf_add_ring_pmd(int ring_id)
 		ring_port_id = port_id;
 		rte_eth_dev_start(ring_port_id);
 	}
-	RTE_LOG(INFO, APP, "ring port add. (no = %d / port = %d)\n",
+	RTE_LOG(INFO, SPP_PROC, "ring port add. (no = %d / port = %d)\n",
 			ring_id, ring_port_id);
 	return ring_port_id;
 }
@@ -130,7 +134,7 @@ spp_vf_add_vhost_pmd(int index, int client)
 
 	mp = rte_mempool_lookup(PKTMBUF_POOL_NAME);
 	if (unlikely(mp == NULL)) {
-		RTE_LOG(ERR, APP, "Cannot get mempool for mbufs. "
+		RTE_LOG(ERR, SPP_PROC, "Cannot get mempool for mbufs. "
 				"(name = %s)\n", PKTMBUF_POOL_NAME);
 		return SPP_RET_NG;
 	}
@@ -143,7 +147,7 @@ spp_vf_add_vhost_pmd(int index, int client)
 			name, iface, nr_queues, client);
 	ret = dev_attach_by_devargs(devargs, &vhost_port_id);
 	if (unlikely(ret < 0)) {
-		RTE_LOG(ERR, APP, "spp_rte_eth_dev_attach error. "
+		RTE_LOG(ERR, SPP_PROC, "spp_rte_eth_dev_attach error. "
 				"(ret = %d)\n", ret);
 		return ret;
 	}
@@ -151,7 +155,7 @@ spp_vf_add_vhost_pmd(int index, int client)
 	ret = rte_eth_dev_configure(vhost_port_id, nr_queues, nr_queues,
 		&port_conf);
 	if (unlikely(ret < 0)) {
-		RTE_LOG(ERR, APP, "rte_eth_dev_configure error. "
+		RTE_LOG(ERR, SPP_PROC, "rte_eth_dev_configure error. "
 				"(ret = %d)\n", ret);
 		return ret;
 	}
@@ -161,7 +165,7 @@ spp_vf_add_vhost_pmd(int index, int client)
 		ret = rte_eth_rx_queue_setup(vhost_port_id, q, NR_DESCS,
 			rte_eth_dev_socket_id(vhost_port_id), NULL, mp);
 		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, APP,
+			RTE_LOG(ERR, SPP_PROC,
 				"rte_eth_rx_queue_setup error. (ret = %d)\n",
 				ret);
 			return ret;
@@ -173,7 +177,7 @@ spp_vf_add_vhost_pmd(int index, int client)
 		ret = rte_eth_tx_queue_setup(vhost_port_id, q, NR_DESCS,
 			rte_eth_dev_socket_id(vhost_port_id), NULL);
 		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, APP,
+			RTE_LOG(ERR, SPP_PROC,
 				"rte_eth_tx_queue_setup error. (ret = %d)\n",
 				ret);
 			return ret;
@@ -183,12 +187,12 @@ spp_vf_add_vhost_pmd(int index, int client)
 	/* Start the Ethernet port. */
 	ret = rte_eth_dev_start(vhost_port_id);
 	if (unlikely(ret < 0)) {
-		RTE_LOG(ERR, APP, "rte_eth_dev_start error. (ret = %d)\n",
+		RTE_LOG(ERR, SPP_PROC, "rte_eth_dev_start error. (ret = %d)\n",
 			ret);
 		return ret;
 	}
 
-	RTE_LOG(INFO, APP, "vhost port add. (no = %d / port = %d)\n",
+	RTE_LOG(INFO, SPP_PROC, "vhost port add. (no = %d / port = %d)\n",
 			index, vhost_port_id);
 	return vhost_port_id;
 }
@@ -231,7 +235,8 @@ check_core_status_wait(enum spp_core_status status)
 			return SPP_RET_OK;
 	}
 
-	RTE_LOG(ERR, APP, "Status check time out. (status = %d)\n", status);
+	RTE_LOG(ERR, SPP_PROC,
+			"Status check time out. (status = %d)\n", status);
 	return SPP_RET_NG;
 }
 
@@ -301,7 +306,8 @@ dump_core_info(const struct core_mng_info *core_info)
 	unsigned int lcore_id = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		info = &core_info[lcore_id];
-		RTE_LOG(DEBUG, APP, "core[%d] status=%d, ref=%d, upd=%d\n",
+		RTE_LOG(DEBUG, SPP_PROC,
+				"core[%d] status=%d, ref=%d, upd=%d\n",
 				lcore_id, info->status,
 				info->ref_index, info->upd_index);
 
@@ -325,7 +331,7 @@ dump_component_info(const struct spp_component_info *component_info)
 		if (component->type == SPP_COMPONENT_UNUSE)
 			continue;
 
-		RTE_LOG(DEBUG, APP, "component[%d] name=%s, type=%d, "
+		RTE_LOG(DEBUG, SPP_PROC, "component[%d] name=%s, type=%d, "
 				"core=%u, index=%d\n",
 				cnt, component->name, component->type,
 				component->lcore_id, component->component_id);
@@ -348,7 +354,7 @@ dump_interface_info(const struct iface_info *iface_info)
 {
 	const struct spp_port_info *port = NULL;
 	int cnt = 0;
-	RTE_LOG(DEBUG, APP, "interface phy=%d, vhost=%d, ring=%d\n",
+	RTE_LOG(DEBUG, SPP_PROC, "interface phy=%d, vhost=%d, ring=%d\n",
 			iface_info->num_nic,
 			iface_info->num_vhost,
 			iface_info->num_ring);
@@ -357,7 +363,7 @@ dump_interface_info(const struct iface_info *iface_info)
 		if (port->iface_type == UNDEF)
 			continue;
 
-		RTE_LOG(DEBUG, APP, "phy  [%d] type=%d, no=%d, port=%d, "
+		RTE_LOG(DEBUG, SPP_PROC, "phy  [%d] type=%d, no=%d, port=%d, "
 				"vid = %u, mac=%08lx(%s)\n",
 				cnt, port->iface_type, port->iface_no,
 				port->dpdk_port,
@@ -370,7 +376,7 @@ dump_interface_info(const struct iface_info *iface_info)
 		if (port->iface_type == UNDEF)
 			continue;
 
-		RTE_LOG(DEBUG, APP, "vhost[%d] type=%d, no=%d, port=%d, "
+		RTE_LOG(DEBUG, SPP_PROC, "vhost[%d] type=%d, no=%d, port=%d, "
 				"vid = %u, mac=%08lx(%s)\n",
 				cnt, port->iface_type, port->iface_no,
 				port->dpdk_port,
@@ -383,7 +389,7 @@ dump_interface_info(const struct iface_info *iface_info)
 		if (port->iface_type == UNDEF)
 			continue;
 
-		RTE_LOG(DEBUG, APP, "ring [%d] type=%d, no=%d, port=%d, "
+		RTE_LOG(DEBUG, SPP_PROC, "ring [%d] type=%d, no=%d, port=%d, "
 				"vid = %u, mac=%08lx(%s)\n",
 				cnt, port->iface_type, port->iface_no,
 				port->dpdk_port,
@@ -912,7 +918,7 @@ flush_component(void)
 		ret = spp_mirror_update(component_info);
 #endif /* SPP_MIRROR_MODULE */
 		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, APP, "Flush error. "
+			RTE_LOG(ERR, SPP_PROC, "Flush error. "
 					"( component = %s, type = %d)\n",
 					component_info->name,
 					component_info->type);
@@ -961,7 +967,7 @@ spp_change_mac_str_to_int64(const char *mac)
 	char *saveptr = NULL;
 	char *endptr = NULL;
 
-	RTE_LOG(DEBUG, APP, "MAC address change. (mac = %s)\n", mac);
+	RTE_LOG(DEBUG, SPP_PROC, "MAC address change. (mac = %s)\n", mac);
 
 	strcpy(tmp_mac, mac);
 	while (1) {
@@ -972,7 +978,7 @@ spp_change_mac_str_to_int64(const char *mac)
 
 		/* Check for mal-formatted address */
 		if (unlikely(token_cnt >= ETHER_ADDR_LEN)) {
-			RTE_LOG(ERR, APP, "MAC address format error. "
+			RTE_LOG(ERR, SPP_PROC, "MAC address format error. "
 					"(mac = %s)\n", mac);
 			return SPP_RET_NG;
 		}
@@ -989,7 +995,7 @@ spp_change_mac_str_to_int64(const char *mac)
 		str = NULL;
 	}
 
-	RTE_LOG(DEBUG, APP, "MAC address change. (mac = %s => 0x%08lx)\n",
+	RTE_LOG(DEBUG, SPP_PROC, "MAC address change. (mac = %s => 0x%08lx)\n",
 			 mac, ret_mac);
 	return ret_mac;
 }

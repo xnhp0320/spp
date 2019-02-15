@@ -12,8 +12,6 @@
  * Command connection management.
  */
 
-#include "spp_proc.h"
-
 /** result code - temporary error. please retry */
 #define SPP_CONNERR_TEMPORARY -1
 /** result code - fatal error occurred. should terminate process. */

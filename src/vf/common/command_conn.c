@@ -22,6 +22,11 @@
  */
 #define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER2
 
+enum spp_return_value {
+	SPP_RET_OK = 0,  /**< succeeded */
+	SPP_RET_NG = -1, /**< failed */
+};
+
 /* one receive message size */
 #define MESSAGE_BUFFER_BLOCK_SIZE 2048
 

@@ -26,14 +26,14 @@
 /** command value string buffer size (include null char) */
 #define SPP_CMD_VALUE_BUFSZ 111
 
-/** decode error code */
-enum spp_command_decode_error_code {
+/** parse error code */
+enum spp_parse_command_error_code {
 	/* not use 0, in general 0 is OK */
-	SPP_CMD_DERR_BAD_FORMAT = 1,  /**< Wrong format */
-	SPP_CMD_DERR_UNKNOWN_COMMAND, /**< Unknown command */
-	SPP_CMD_DERR_NO_PARAM,        /**< No parameters */
-	SPP_CMD_DERR_BAD_TYPE,        /**< Wrong data type */
-	SPP_CMD_DERR_BAD_VALUE,       /**< Wrong value */
+	WRONG_FORMAT = 1, /**< Wrong format */
+	UNKNOWN_COMMAND,  /**< Unknown command */
+	NO_PARAM,         /**< No parameters */
+	WRONG_TYPE,       /**< Wrong data type */
+	WRONG_VALUE,      /**< Wrong value */
 };
 
 /**
@@ -44,11 +44,11 @@ enum spp_command_decode_error_code {
  *   classifier_table : add,del
  */
 enum spp_command_action {
-	SPP_CMD_ACTION_NONE,  /**< none */
-	SPP_CMD_ACTION_START, /**< start */
-	SPP_CMD_ACTION_STOP,  /**< stop */
-	SPP_CMD_ACTION_ADD,   /**< add */
-	SPP_CMD_ACTION_DEL,   /**< delete */
+	CMD_ACTION_NONE,  /**< none */
+	CMD_ACTION_START, /**< start */
+	CMD_ACTION_STOP,  /**< stop */
+	CMD_ACTION_ADD,   /**< add */
+	CMD_ACTION_DEL,   /**< delete */
 };
 
 /**
@@ -59,25 +59,25 @@ enum spp_command_action {
  */
 enum spp_command_type {
 	/** classifier_table command(mac) */
-	SPP_CMDTYPE_CLASSIFIER_TABLE_MAC,
+	CMD_CLASSIFIER_TABLE_MAC,
 
 	/** classifier_table command(VLAN) */
-	SPP_CMDTYPE_CLASSIFIER_TABLE_VLAN,
+	CMD_CLASSIFIER_TABLE_VLAN,
 
 	/** get_client_id command */
-	SPP_CMDTYPE_CLIENT_ID,
+	CMD_CLIENT_ID,
 
 	/** status command */
-	SPP_CMDTYPE_STATUS,
+	CMD_STATUS,
 
 	/** exit command */
-	SPP_CMDTYPE_EXIT,
+	CMD_EXIT,
 
 	/** component command */
-	SPP_CMDTYPE_COMPONENT,
+	CMD_COMPONENT,
 
 	/** port command */
-	SPP_CMDTYPE_PORT,
+	CMD_PORT,
 };
 
 /** "classifier_table" command specific parameters */
@@ -167,8 +167,8 @@ struct spp_command_request {
 	int is_requested_exit;          /**< Id for exit command */
 };
 
-/** decode error information */
-struct spp_command_decode_error {
+/** parse error information */
+struct spp_parse_command_error {
 	int code;                            /**< Error code */
 	char value_name[SPP_CMD_NAME_BUFSZ]; /**< Error value name */
 	char value[SPP_CMD_VALUE_BUFSZ];     /**< Error value */
@@ -185,7 +185,7 @@ struct spp_command_decode_error {
  * @param request_str_len
  *  The length of requested command message.
  * @param error
- *  The pointer to struct spp_command_decode_error.@n
+ *  The pointer to struct spp_parse_command_error.@n
  *  Detailed error information will be stored.
  *
  * @retval SPP_RET_OK succeeded.
@@ -193,6 +193,6 @@ struct spp_command_decode_error {
  */
 int spp_command_decode_request(struct spp_command_request *request,
 		const char *request_str, size_t request_str_len,
-		struct spp_command_decode_error *error);
+		struct spp_parse_command_error *error);
 
 #endif /* _COMMAND_DEC_H_ */

@@ -177,7 +177,7 @@ spp_convert_component_type(const char *type_str)
 
 /* set decode error */
 static inline int
-set_decode_error(struct spp_command_decode_error *error,
+set_decode_error(struct spp_parse_command_error *error,
 		const int error_code, const char *error_name)
 {
 	error->code = error_code;
@@ -190,11 +190,11 @@ set_decode_error(struct spp_command_decode_error *error,
 
 /* set decode error */
 static inline int
-set_string_value_decode_error(struct spp_command_decode_error *error,
+set_string_value_decode_error(struct spp_parse_command_error *error,
 		const char *value, const char *error_name)
 {
 	strcpy(error->value, value);
-	return set_decode_error(error, SPP_CMD_DERR_BAD_VALUE, error_name);
+	return set_decode_error(error, WRONG_VALUE, error_name);
 }
 
 /* Split command line parameter with spaces */
@@ -329,8 +329,8 @@ decode_component_action_value(void *output, const char *arg_val,
 		return SPP_RET_NG;
 	}
 
-	if (unlikely(ret != SPP_CMD_ACTION_START) &&
-			unlikely(ret != SPP_CMD_ACTION_STOP)) {
+	if (unlikely(ret != CMD_ACTION_START) &&
+			unlikely(ret != CMD_ACTION_STOP)) {
 		RTE_LOG(ERR, SPP_COMMAND_DEC,
 				"Unknown component action. val=%s\n",
 				arg_val);
@@ -350,7 +350,7 @@ decode_component_name_value(void *output, const char *arg_val,
 	struct spp_command_component *component = output;
 
 	/* "stop" has no core ID parameter. */
-	if (component->action == SPP_CMD_ACTION_START) {
+	if (component->action == CMD_ACTION_START) {
 		ret = spp_get_component_id(arg_val);
 		if (unlikely(ret >= 0)) {
 			RTE_LOG(ERR, SPP_COMMAND_DEC,
@@ -371,7 +371,7 @@ decode_component_core_value(void *output, const char *arg_val,
 	struct spp_command_component *component = output;
 
 	/* "stop" has no core ID parameter. */
-	if (component->action != SPP_CMD_ACTION_START)
+	if (component->action != CMD_ACTION_START)
 		return SPP_RET_OK;
 
 	return decode_core_value(&component->core, arg_val);
@@ -386,7 +386,7 @@ decode_component_type_value(void *output, const char *arg_val,
 	struct spp_command_component *component = output;
 
 	/* "stop" has no type parameter. */
-	if (component->action != SPP_CMD_ACTION_START)
+	if (component->action != CMD_ACTION_START)
 		return SPP_RET_OK;
 
 	comp_type = spp_convert_component_type(arg_val);
@@ -415,8 +415,8 @@ decode_port_action_value(void *output, const char *arg_val,
 		return SPP_RET_NG;
 	}
 
-	if (unlikely(ret != SPP_CMD_ACTION_ADD) &&
-			unlikely(ret != SPP_CMD_ACTION_DEL)) {
+	if (unlikely(ret != CMD_ACTION_ADD) &&
+			unlikely(ret != CMD_ACTION_DEL)) {
 		RTE_LOG(ERR, SPP_COMMAND_DEC,
 				"Unknown port action. val=%s\n",
 				arg_val);
@@ -441,7 +441,7 @@ decode_port_port_value(void *output, const char *arg_val, int allow_override)
 
 	/* add vlantag command check */
 	if (allow_override == 0) {
-		if ((port->action == SPP_CMD_ACTION_ADD) &&
+		if ((port->action == CMD_ACTION_ADD) &&
 				(spp_check_used_port(tmp_port.iface_type,
 						tmp_port.iface_no,
 						SPP_PORT_RXTX_RX) >= 0) &&
@@ -476,7 +476,7 @@ decode_port_rxtx_value(void *output, const char *arg_val, int allow_override)
 
 	/* add vlantag command check */
 	if (allow_override == 0) {
-		if ((port->action == SPP_CMD_ACTION_ADD) &&
+		if ((port->action == CMD_ACTION_ADD) &&
 				(spp_check_used_port(port->port.iface_type,
 					port->port.iface_no, ret) >= 0)) {
 			RTE_LOG(ERR, SPP_COMMAND_DEC,
@@ -630,8 +630,8 @@ decode_classifier_action_value(void *output, const char *arg_val,
 		return SPP_RET_NG;
 	}
 
-	if (unlikely(ret != SPP_CMD_ACTION_ADD) &&
-			unlikely(ret != SPP_CMD_ACTION_DEL)) {
+	if (unlikely(ret != CMD_ACTION_ADD) &&
+			unlikely(ret != CMD_ACTION_DEL)) {
 		RTE_LOG(ERR, SPP_COMMAND_DEC, "Unknown port action. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
@@ -698,7 +698,7 @@ decode_classifier_port_value(void *output, const char *arg_val,
 	if (classifier_table->type == SPP_CLASSIFIER_TYPE_MAC)
 		classifier_table->vid = ETH_VLAN_ID_MAX;
 
-	if (unlikely(classifier_table->action == SPP_CMD_ACTION_ADD)) {
+	if (unlikely(classifier_table->action == CMD_ACTION_ADD)) {
 		if (!spp_check_classid_used_port(ETH_VLAN_ID_MAX, 0,
 				tmp_port.iface_type, tmp_port.iface_no)) {
 			RTE_LOG(ERR, SPP_COMMAND_DEC, "Port in used. "
@@ -706,7 +706,7 @@ decode_classifier_port_value(void *output, const char *arg_val,
 					arg_val);
 			return SPP_RET_NG;
 		}
-	} else if (unlikely(classifier_table->action == SPP_CMD_ACTION_DEL)) {
+	} else if (unlikely(classifier_table->action == CMD_ACTION_DEL)) {
 		mac_addr = spp_change_mac_str_to_int64(classifier_table->mac);
 		if (mac_addr < 0)
 			return SPP_RET_NG;
@@ -872,7 +872,7 @@ parameter_list[][SPP_CMD_MAX_PARAMETERS] = {
 static int
 decode_command_parameter_component(struct spp_command_request *request,
 				int argc, char *argv[],
-				struct spp_command_decode_error *error,
+				struct spp_parse_command_error *error,
 				int maxargc __attribute__ ((unused)))
 {
 	int ret = SPP_RET_OK;
@@ -900,7 +900,7 @@ decode_command_parameter_component(struct spp_command_request *request,
 static int
 decode_command_parameter_cls_table(struct spp_command_request *request,
 				int argc, char *argv[],
-				struct spp_command_decode_error *error,
+				struct spp_parse_command_error *error,
 				int maxargc)
 {
 	return decode_command_parameter_component(request,
@@ -913,7 +913,7 @@ decode_command_parameter_cls_table(struct spp_command_request *request,
 static int
 decode_command_parameter_cls_table_vlan(struct spp_command_request *request,
 				int argc, char *argv[],
-				struct spp_command_decode_error *error,
+				struct spp_parse_command_error *error,
 				int maxargc __attribute__ ((unused)))
 {
 	int ret = SPP_RET_OK;
@@ -940,7 +940,7 @@ decode_command_parameter_cls_table_vlan(struct spp_command_request *request,
 static int
 decode_command_parameter_port(struct spp_command_request *request,
 				int argc, char *argv[],
-				struct spp_command_decode_error *error,
+				struct spp_parse_command_error *error,
 				int maxargc)
 {
 	int ret = SPP_RET_OK;
@@ -975,7 +975,7 @@ struct decode_command_list {
 	int   param_min;        /* Min number of parameters */
 	int   param_max;        /* Max number of parameters */
 	int (*func)(struct spp_command_request *request, int argc,
-			char *argv[], struct spp_command_decode_error *error,
+			char *argv[], struct spp_parse_command_error *error,
 			int maxargc);
 				/* Pointer to command handling function */
 };
@@ -999,7 +999,7 @@ static struct decode_command_list command_list[] = {
 static int
 decode_command_in_list(struct spp_command_request *request,
 			const char *request_str,
-			struct spp_command_decode_error *error)
+			struct spp_parse_command_error *error)
 {
 	int ret = SPP_RET_OK;
 	int command_name_check = 0;
@@ -1017,7 +1017,7 @@ decode_command_in_list(struct spp_command_request *request,
 	if (ret < SPP_RET_OK) {
 		RTE_LOG(ERR, SPP_COMMAND_DEC, "Parameter number over limit."
 				"request_str=%s\n", request_str);
-		return set_decode_error(error, SPP_CMD_DERR_BAD_FORMAT, NULL);
+		return set_decode_error(error, WRONG_FORMAT, NULL);
 	}
 	RTE_LOG(DEBUG, SPP_COMMAND_DEC, "Decode array. num=%d\n", argc);
 
@@ -1043,7 +1043,7 @@ decode_command_in_list(struct spp_command_request *request,
 	if (command_name_check != 0) {
 		RTE_LOG(ERR, SPP_COMMAND_DEC, "Parameter number out of range."
 				"request_str=%s\n", request_str);
-		return set_decode_error(error, SPP_CMD_DERR_BAD_FORMAT, NULL);
+		return set_decode_error(error, WRONG_FORMAT, NULL);
 	}
 
 	RTE_LOG(ERR, SPP_COMMAND_DEC,
@@ -1057,7 +1057,7 @@ int
 spp_command_decode_request(
 		struct spp_command_request *request,
 		const char *request_str, size_t request_str_len,
-		struct spp_command_decode_error *error)
+		struct spp_parse_command_error *error)
 {
 	int ret = SPP_RET_NG;
 	int i;
@@ -1077,13 +1077,13 @@ spp_command_decode_request(
 	/* check getter command */
 	for (i = 0; i < request->num_valid_command; ++i) {
 		switch (request->commands[i].type) {
-		case SPP_CMDTYPE_CLIENT_ID:
+		case CMD_CLIENT_ID:
 			request->is_requested_client_id = 1;
 			break;
-		case SPP_CMDTYPE_STATUS:
+		case CMD_STATUS:
 			request->is_requested_status = 1;
 			break;
-		case SPP_CMDTYPE_EXIT:
+		case CMD_EXIT:
 			request->is_requested_exit = 1;
 			break;
 		default:

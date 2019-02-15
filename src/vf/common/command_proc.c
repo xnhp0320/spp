@@ -39,11 +39,11 @@
 #define JSON_APPEND_BLOCK         "%s\"%s\": { %s }"
 #define JSON_APPEND_BLOCK_NONAME  "%s%s{ %s }"
 
-/* command execution result code */
-enum command_result_code {
-	CRES_SUCCESS = 0,
-	CRES_FAILURE,
-	CRES_INVALID,
+/* command execution result type */
+enum command_result_type {
+	CMD_SUCCESS = 0,
+	CMD_FAILURE,
+	CMD_INVALID,
 };
 
 /* command execution result information */
@@ -52,7 +52,7 @@ struct command_result {
 	int code;
 
 	/* Response message */
-	char result[SPP_CMD_NAME_BUFSZ];
+	char msg[SPP_CMD_NAME_BUFSZ];
 
 	/* Detailed response message */
 	char error_message[CMD_RES_ERR_MSG_SIZE];
@@ -172,7 +172,7 @@ spp_update_classifier_table(
 		return SPP_RET_NG;
 	}
 
-	if (action == SPP_CMD_ACTION_DEL) {
+	if (action == CMD_ACTION_DEL) {
 		/* Delete */
 		if ((port_info->class_id.vlantag.vid != 0) &&
 				unlikely(port_info->class_id.vlantag.vid !=
@@ -195,7 +195,7 @@ spp_update_classifier_table(
 		memset(port_info->class_id.mac_addr_str, 0x00,
 							SPP_MIN_STR_LEN);
 
-	} else if (action == SPP_CMD_ACTION_ADD) {
+	} else if (action == CMD_ACTION_ADD) {
 		/* Setting */
 		if (unlikely(port_info->class_id.vlantag.vid !=
 				ETH_VLAN_ID_MAX)) {
@@ -250,7 +250,7 @@ spp_update_component(
 				&change_core, &change_component, NULL);
 
 	switch (action) {
-	case SPP_CMD_ACTION_START:
+	case CMD_ACTION_START:
 		info = (core_info + lcore_id);
 		if (info->status == SPP_CORE_UNUSE) {
 			RTE_LOG(ERR, SPP_COMMAND_PROC,
@@ -289,7 +289,7 @@ spp_update_component(
 		*(change_component + component_id) = 1;
 		break;
 
-	case SPP_CMD_ACTION_STOP:
+	case CMD_ACTION_STOP:
 		component_id = spp_get_component_id(name);
 		if (component_id < 0)
 			return SPP_RET_OK;
@@ -412,7 +412,7 @@ spp_update_port(enum spp_command_action action,
 	}
 
 	switch (action) {
-	case SPP_CMD_ACTION_ADD:
+	case CMD_ACTION_ADD:
 		/* Check if over the maximum num of ports of component. */
 		if (check_port_count(comp_info->type, rxtx,
 				comp_info->num_rx_port,
@@ -471,7 +471,7 @@ spp_update_port(enum spp_command_action action,
 		ret = SPP_RET_OK;
 		break;
 
-	case SPP_CMD_ACTION_DEL:
+	case CMD_ACTION_DEL:
 		for (cnt = 0; cnt < SPP_PORT_ABILITY_MAX; cnt++) {
 			if (port_info->ability[cnt].ope ==
 					SPP_PORT_ABILITY_OPE_NONE)
@@ -752,8 +752,8 @@ execute_command(const struct spp_command *command)
 	int ret = SPP_RET_OK;
 
 	switch (command->type) {
-	case SPP_CMDTYPE_CLASSIFIER_TABLE_MAC:
-	case SPP_CMDTYPE_CLASSIFIER_TABLE_VLAN:
+	case CMD_CLASSIFIER_TABLE_MAC:
+	case CMD_CLASSIFIER_TABLE_VLAN:
 		RTE_LOG(INFO, SPP_COMMAND_PROC,
 				"Execute classifier_table command.\n");
 		ret = spp_update_classifier_table(
@@ -769,7 +769,7 @@ execute_command(const struct spp_command *command)
 		}
 		break;
 
-	case SPP_CMDTYPE_COMPONENT:
+	case CMD_COMPONENT:
 		RTE_LOG(INFO, SPP_COMMAND_PROC,
 				"Execute component command.\n");
 		ret = spp_update_component(
@@ -784,7 +784,7 @@ execute_command(const struct spp_command *command)
 		}
 		break;
 
-	case SPP_CMDTYPE_PORT:
+	case CMD_PORT:
 		RTE_LOG(INFO, SPP_COMMAND_PROC,
 				"Execute port command. (act = %d)\n",
 				command->spec.port.action);
@@ -815,30 +815,30 @@ execute_command(const struct spp_command *command)
 /* make decode error message for response */
 static const char *
 make_decode_error_message(
-		const struct spp_command_decode_error *decode_error,
+		const struct spp_parse_command_error *parse_error,
 		char *message)
 {
-	switch (decode_error->code) {
-	case SPP_CMD_DERR_BAD_FORMAT:
-		sprintf(message, "bad message format");
+	switch (parse_error->code) {
+	case WRONG_FORMAT:
+		sprintf(message, "wrong message format");
 		break;
 
-	case SPP_CMD_DERR_UNKNOWN_COMMAND:
-		sprintf(message, "unknown command(%s)", decode_error->value);
+	case UNKNOWN_COMMAND:
+		sprintf(message, "unknown command(%s)", parse_error->value);
 		break;
 
-	case SPP_CMD_DERR_NO_PARAM:
+	case NO_PARAM:
 		sprintf(message, "not enough parameter(%s)",
-				decode_error->value_name);
+				parse_error->value_name);
 		break;
 
-	case SPP_CMD_DERR_BAD_TYPE:
-		sprintf(message, "bad value type(%s)",
-				decode_error->value_name);
+	case WRONG_TYPE:
+		sprintf(message, "wrong value type(%s)",
+				parse_error->value_name);
 		break;
 
-	case SPP_CMD_DERR_BAD_VALUE:
-		sprintf(message, "bad value(%s)", decode_error->value_name);
+	case WRONG_VALUE:
+		sprintf(message, "wrong value(%s)", parse_error->value_name);
 		break;
 
 	default:
@@ -856,17 +856,17 @@ set_command_results(struct command_result *result,
 {
 	result->code = code;
 	switch (code) {
-	case CRES_SUCCESS:
-		strcpy(result->result, "success");
+	case CMD_SUCCESS:
+		strcpy(result->msg, "success");
 		memset(result->error_message, 0x00, CMD_RES_ERR_MSG_SIZE);
 		break;
-	case CRES_FAILURE:
-		strcpy(result->result, "error");
+	case CMD_FAILURE:
+		strcpy(result->msg, "error");
 		strcpy(result->error_message, error_messege);
 		break;
-	case CRES_INVALID: /* FALLTHROUGH */
+	case CMD_INVALID: /* FALLTHROUGH */
 	default:
-		strcpy(result->result, "invalid");
+		strcpy(result->msg, "invalid");
 		memset(result->error_message, 0x00, CMD_RES_ERR_MSG_SIZE);
 		break;
 	}
@@ -876,24 +876,24 @@ set_command_results(struct command_result *result,
 static void
 set_decode_error_to_results(struct command_result *results,
 		const struct spp_command_request *request,
-		const struct spp_command_decode_error *decode_error)
+		const struct spp_parse_command_error *parse_error)
 {
 	int i;
 	const char *tmp_buff;
 	char error_messege[CMD_RES_ERR_MSG_SIZE];
 
 	for (i = 0; i < request->num_command; i++) {
-		if (decode_error->code == 0)
-			set_command_results(&results[i], CRES_SUCCESS, "");
+		if (parse_error->code == 0)
+			set_command_results(&results[i], CMD_SUCCESS, "");
 		else
-			set_command_results(&results[i], CRES_INVALID, "");
+			set_command_results(&results[i], CMD_INVALID, "");
 	}
 
-	if (decode_error->code != 0) {
-		tmp_buff = make_decode_error_message(decode_error,
+	if (parse_error->code != 0) {
+		tmp_buff = make_decode_error_message(parse_error,
 				error_messege);
 		set_command_results(&results[request->num_valid_command],
-				CRES_FAILURE, tmp_buff);
+				CMD_FAILURE, tmp_buff);
 	}
 }
 
@@ -902,7 +902,7 @@ static int
 append_result_value(const char *name, char **output, void *tmp)
 {
 	const struct command_result *result = tmp;
-	return append_json_str_value(name, output, result->result);
+	return append_json_str_value(name, output, result->msg);
 }
 
 /* append error details for JSON format */
@@ -1613,11 +1613,11 @@ process_request(int *sock, const char *request_str, size_t request_str_len)
 	int i;
 
 	struct spp_command_request request;
-	struct spp_command_decode_error decode_error;
+	struct spp_parse_command_error parse_error;
 	struct command_result command_results[SPP_CMD_MAX_COMMANDS];
 
 	memset(&request, 0, sizeof(struct spp_command_request));
-	memset(&decode_error, 0, sizeof(struct spp_command_decode_error));
+	memset(&parse_error, 0, sizeof(struct spp_parse_command_error));
 	memset(command_results, 0, sizeof(command_results));
 
 	RTE_LOG(DEBUG, SPP_COMMAND_PROC, "Start command request processing. "
@@ -1626,11 +1626,11 @@ process_request(int *sock, const char *request_str, size_t request_str_len)
 
 	/* decode request message */
 	ret = spp_command_decode_request(
-			&request, request_str, request_str_len, &decode_error);
+			&request, request_str, request_str_len, &parse_error);
 	if (unlikely(ret != SPP_RET_OK)) {
 		/* send error response */
 		set_decode_error_to_results(command_results, &request,
-				&decode_error);
+				&parse_error);
 		send_decode_error_response(sock, &request, command_results);
 		RTE_LOG(DEBUG, SPP_COMMAND_PROC,
 				"End command request processing.\n");
@@ -1645,24 +1645,24 @@ process_request(int *sock, const char *request_str, size_t request_str_len)
 	for (i = 0; i < request.num_command ; ++i) {
 		ret = execute_command(request.commands + i);
 		if (unlikely(ret != SPP_RET_OK)) {
-			set_command_results(&command_results[i], CRES_FAILURE,
+			set_command_results(&command_results[i], CMD_FAILURE,
 					"error occur");
 
 			/* not execute remaining commands */
 			for (++i; i < request.num_command ; ++i)
 				set_command_results(&command_results[i],
-					CRES_INVALID, "");
+					CMD_INVALID, "");
 
 			break;
 		}
 
-		set_command_results(&command_results[i], CRES_SUCCESS, "");
+		set_command_results(&command_results[i], CMD_SUCCESS, "");
 	}
 
 	if (request.is_requested_exit) {
 		/* Terminated by process exit command.                       */
 		/* Other route is normal end because it responds to command. */
-		set_command_results(&command_results[0], CRES_SUCCESS, "");
+		set_command_results(&command_results[0], CMD_SUCCESS, "");
 		send_command_result_response(sock, &request, command_results);
 		RTE_LOG(INFO, SPP_COMMAND_PROC,
 				"Terminate process for exit.\n");

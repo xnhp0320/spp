@@ -772,8 +772,12 @@ execute_command(const struct spp_command *command)
 	switch (command->type) {
 	case CMD_CLASSIFIER_TABLE_MAC:
 	case CMD_CLASSIFIER_TABLE_VLAN:
-		RTE_LOG(INFO, SPP_COMMAND_PROC,
-				"Execute classifier_table command.\n");
+		if (command->type == CMD_CLASSIFIER_TABLE_MAC)
+			RTE_LOG(INFO, SPP_COMMAND_PROC,
+				"Execute classifier_table command(MAC).\n");
+		else
+			RTE_LOG(INFO, SPP_COMMAND_PROC,
+				"Execute classifier_table command(VLAN).\n");
 		ret = spp_update_classifier_table(
 				command->spec.classifier_table.action,
 				command->spec.classifier_table.type,
@@ -819,11 +823,19 @@ execute_command(const struct spp_command *command)
 		}
 		break;
 
-	default:
+	case CMD_CLIENT_ID:
 		RTE_LOG(INFO, SPP_COMMAND_PROC,
-				"Execute other command. type=%d\n",
-				command->type);
-		/* nothing to do here */
+				"Execute get_client_id command.\n");
+		break;
+
+	case CMD_STATUS:
+		RTE_LOG(INFO, SPP_COMMAND_PROC,
+				"Execute status command.\n");
+		break;
+
+	case CMD_EXIT:
+		RTE_LOG(INFO, SPP_COMMAND_PROC,
+				"Execute exit command.\n");
 		break;
 	}
 

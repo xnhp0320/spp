@@ -175,9 +175,9 @@ spp_convert_component_type(const char *type_str)
 	return SPP_COMPONENT_UNUSE;
 }
 
-/* set decode error */
+/* set parse error */
 static inline int
-set_decode_error(struct spp_parse_command_error *error,
+set_parse_error(struct spp_parse_command_error *error,
 		const int error_code, const char *error_name)
 {
 	error->code = error_code;
@@ -188,18 +188,18 @@ set_decode_error(struct spp_parse_command_error *error,
 	return error->code;
 }
 
-/* set decode error */
+/* set parse error */
 static inline int
-set_string_value_decode_error(struct spp_parse_command_error *error,
+set_string_value_parse_error(struct spp_parse_command_error *error,
 		const char *value, const char *error_name)
 {
 	strcpy(error->value, value);
-	return set_decode_error(error, WRONG_VALUE, error_name);
+	return set_parse_error(error, WRONG_VALUE, error_name);
 }
 
 /* Split command line parameter with spaces */
 static int
-decode_parameter_value(char *string, int max, int *argc, char *argv[])
+parse_parameter_value(char *string, int max, int *argc, char *argv[])
 {
 	int cnt = 0;
 	const char *delim = " ";
@@ -273,9 +273,9 @@ get_uint_value(
 	return SPP_RET_OK;
 }
 
-/* decoding procedure of string */
+/* parse procedure of string */
 static int
-decode_str_value(char *output, const char *arg_val)
+parse_str_value(char *output, const char *arg_val)
 {
 	if (strlen(arg_val) >= SPP_CMD_VALUE_BUFSZ)
 		return SPP_RET_NG;
@@ -284,9 +284,9 @@ decode_str_value(char *output, const char *arg_val)
 	return SPP_RET_OK;
 }
 
-/* decoding procedure of port */
+/* parse procedure of port */
 static int
-decode_port_value(void *output, const char *arg_val)
+parse_port_value(void *output, const char *arg_val)
 {
 	int ret = SPP_RET_OK;
 	struct spp_port_index *port = output;
@@ -360,7 +360,7 @@ decode_component_name_value(void *output, const char *arg_val,
 		}
 	}
 
-	return decode_str_value(component->name, arg_val);
+	return parse_str_value(component->name, arg_val);
 }
 
 /* decoding procedure of core id for component command */
@@ -435,7 +435,7 @@ decode_port_port_value(void *output, const char *arg_val, int allow_override)
 	struct spp_port_index tmp_port;
 	struct spp_command_port *port = output;
 
-	ret = decode_port_value(&tmp_port, arg_val);
+	ret = parse_port_value(&tmp_port, arg_val);
 	if (ret < SPP_RET_OK)
 		return SPP_RET_NG;
 
@@ -504,10 +504,10 @@ decode_port_name_value(void *output, const char *arg_val,
 		return SPP_RET_NG;
 	}
 
-	return decode_str_value(output, arg_val);
+	return parse_str_value(output, arg_val);
 }
 
-/* decoding procedure of vlan operation for port command */
+/* decode procedure of vlan operation for port command */
 static int
 decode_port_vlan_operation(void *output, const char *arg_val,
 				int allow_override __attribute__ ((unused)))
@@ -539,7 +539,7 @@ decode_port_vlan_operation(void *output, const char *arg_val,
 	return SPP_RET_OK;
 }
 
-/* decoding procedure of vid  for port command */
+/* decode procedure of vid  for port command */
 static int
 decode_port_vid(void *output, const char *arg_val,
 				int allow_override __attribute__ ((unused)))
@@ -567,7 +567,7 @@ decode_port_vid(void *output, const char *arg_val,
 	return SPP_RET_OK;
 }
 
-/* decoding procedure of pcp for port command */
+/* decode procedure of pcp for port command */
 static int
 decode_port_pcp(void *output, const char *arg_val,
 				int allow_override __attribute__ ((unused)))
@@ -684,7 +684,7 @@ decode_classifier_port_value(void *output, const char *arg_val,
 	struct spp_port_index tmp_port;
 	int64_t mac_addr = 0;
 
-	ret = decode_port_value(&tmp_port, arg_val);
+	ret = parse_port_value(&tmp_port, arg_val);
 	if (ret < SPP_RET_OK)
 		return SPP_RET_NG;
 
@@ -726,10 +726,10 @@ decode_classifier_port_value(void *output, const char *arg_val,
 	return SPP_RET_OK;
 }
 
-#define DECODE_PARAMETER_LIST_EMPTY { NULL, 0, NULL }
+#define PARSE_PARAMETER_LIST_EMPTY { NULL, 0, NULL }
 
 /* parameter list for decoding */
-struct decode_parameter_list {
+struct parse_parameter_list {
 	const char *name;       /* Parameter name */
 	size_t offset;          /* Offset value of struct spp_command */
 	int (*func)(void *output, const char *arg_val, int allow_override);
@@ -737,7 +737,7 @@ struct decode_parameter_list {
 };
 
 /* parameter list for each command */
-static struct decode_parameter_list
+static struct parse_parameter_list
 parameter_list[][SPP_CMD_MAX_PARAMETERS] = {
 	{                                /* classifier_table(mac) */
 		{
@@ -764,7 +764,7 @@ parameter_list[][SPP_CMD_MAX_PARAMETERS] = {
 					spec.classifier_table),
 			.func = decode_classifier_port_value
 		},
-		DECODE_PARAMETER_LIST_EMPTY,
+		PARSE_PARAMETER_LIST_EMPTY,
 	},
 	{                                /* classifier_table(VLAN) */
 		{
@@ -797,11 +797,11 @@ parameter_list[][SPP_CMD_MAX_PARAMETERS] = {
 					spec.classifier_table),
 			.func = decode_classifier_port_value
 		},
-		DECODE_PARAMETER_LIST_EMPTY,
+		PARSE_PARAMETER_LIST_EMPTY,
 	},
-	{ DECODE_PARAMETER_LIST_EMPTY }, /* _get_client_id   */
-	{ DECODE_PARAMETER_LIST_EMPTY }, /* status           */
-	{ DECODE_PARAMETER_LIST_EMPTY }, /* exit             */
+	{ PARSE_PARAMETER_LIST_EMPTY }, /* _get_client_id   */
+	{ PARSE_PARAMETER_LIST_EMPTY }, /* status           */
+	{ PARSE_PARAMETER_LIST_EMPTY }, /* exit             */
 	{                                /* component        */
 		{
 			.name = "action",
@@ -824,7 +824,7 @@ parameter_list[][SPP_CMD_MAX_PARAMETERS] = {
 			.offset = offsetof(struct spp_command, spec.component),
 			.func = decode_component_type_value
 		},
-		DECODE_PARAMETER_LIST_EMPTY,
+		PARSE_PARAMETER_LIST_EMPTY,
 	},
 	{                                /* port             */
 		{
@@ -863,14 +863,14 @@ parameter_list[][SPP_CMD_MAX_PARAMETERS] = {
 			.offset = offsetof(struct spp_command, spec.port),
 			.func = decode_port_pcp
 		},
-		DECODE_PARAMETER_LIST_EMPTY,
+		PARSE_PARAMETER_LIST_EMPTY,
 	},
-	{ DECODE_PARAMETER_LIST_EMPTY }, /* termination      */
+	{ PARSE_PARAMETER_LIST_EMPTY }, /* termination      */
 };
 
 /* check by list for each command line parameter component */
 static int
-decode_command_parameter_component(struct spp_command_request *request,
+parse_command_parameter_component(struct spp_command_request *request,
 				int argc, char *argv[],
 				struct spp_parse_command_error *error,
 				int maxargc __attribute__ ((unused)))
@@ -878,7 +878,7 @@ decode_command_parameter_component(struct spp_command_request *request,
 	int ret = SPP_RET_OK;
 	int ci = request->commands[0].type;
 	int pi = 0;
-	struct decode_parameter_list *list = NULL;
+	struct parse_parameter_list *list = NULL;
 	for (pi = 1; pi < argc; pi++) {
 		list = &parameter_list[ci][pi-1];
 		ret = (*list->func)((void *)
@@ -889,7 +889,7 @@ decode_command_parameter_component(struct spp_command_request *request,
 					"Bad value. command=%s, name=%s, "
 					"index=%d, value=%s\n",
 					argv[0], list->name, pi, argv[pi]);
-			return set_string_value_decode_error(error, argv[pi],
+			return set_string_value_parse_error(error, argv[pi],
 					list->name);
 		}
 	}
@@ -898,12 +898,12 @@ decode_command_parameter_component(struct spp_command_request *request,
 
 /* check by list for each command line parameter clssfier_table */
 static int
-decode_command_parameter_cls_table(struct spp_command_request *request,
+parse_command_parameter_cls_table(struct spp_command_request *request,
 				int argc, char *argv[],
 				struct spp_parse_command_error *error,
 				int maxargc)
 {
-	return decode_command_parameter_component(request,
+	return parse_command_parameter_component(request,
 						argc,
 						argv,
 						error,
@@ -911,7 +911,7 @@ decode_command_parameter_cls_table(struct spp_command_request *request,
 }
 /* check by list for each command line parameter clssfier_table(vlan) */
 static int
-decode_command_parameter_cls_table_vlan(struct spp_command_request *request,
+parse_command_parameter_cls_table_vlan(struct spp_command_request *request,
 				int argc, char *argv[],
 				struct spp_parse_command_error *error,
 				int maxargc __attribute__ ((unused)))
@@ -919,7 +919,7 @@ decode_command_parameter_cls_table_vlan(struct spp_command_request *request,
 	int ret = SPP_RET_OK;
 	int ci = request->commands[0].type;
 	int pi = 0;
-	struct decode_parameter_list *list = NULL;
+	struct parse_parameter_list *list = NULL;
 	for (pi = 1; pi < argc; pi++) {
 		list = &parameter_list[ci][pi-1];
 		ret = (*list->func)((void *)
@@ -929,7 +929,7 @@ decode_command_parameter_cls_table_vlan(struct spp_command_request *request,
 			RTE_LOG(ERR, SPP_COMMAND_DEC, "Bad value. "
 				"command=%s, name=%s, index=%d, value=%s\n",
 					argv[0], list->name, pi, argv[pi]);
-			return set_string_value_decode_error(error, argv[pi],
+			return set_string_value_parse_error(error, argv[pi],
 				list->name);
 		}
 	}
@@ -938,7 +938,7 @@ decode_command_parameter_cls_table_vlan(struct spp_command_request *request,
 
 /* check by list for each command line parameter port */
 static int
-decode_command_parameter_port(struct spp_command_request *request,
+parse_command_parameter_port(struct spp_command_request *request,
 				int argc, char *argv[],
 				struct spp_parse_command_error *error,
 				int maxargc)
@@ -946,7 +946,7 @@ decode_command_parameter_port(struct spp_command_request *request,
 	int ret = SPP_RET_OK;
 	int ci = request->commands[0].type;
 	int pi = 0;
-	struct decode_parameter_list *list = NULL;
+	struct parse_parameter_list *list = NULL;
 	int flag = 0;
 
 	/* check add vlatag */
@@ -962,15 +962,15 @@ decode_command_parameter_port(struct spp_command_request *request,
 			RTE_LOG(ERR, SPP_COMMAND_DEC, "Bad value. "
 				"command=%s, name=%s, index=%d, value=%s\n",
 					argv[0], list->name, pi, argv[pi]);
-			return set_string_value_decode_error(error, argv[pi],
+			return set_string_value_parse_error(error, argv[pi],
 				list->name);
 		}
 	}
 	return SPP_RET_OK;
 }
 
-/* command list for decoding */
-struct decode_command_list {
+/* command list for parse */
+struct parse_command_list {
 	const char *name;       /* Command name */
 	int   param_min;        /* Min number of parameters */
 	int   param_max;        /* Max number of parameters */
@@ -981,29 +981,29 @@ struct decode_command_list {
 };
 
 /* command list */
-static struct decode_command_list command_list[] = {
+static struct parse_command_list command_list[] = {
 	/* classifier_table(mac) */
-	{ "classifier_table", 5, 5, decode_command_parameter_cls_table },
+	{ "classifier_table", 5, 5, parse_command_parameter_cls_table },
 	/* classifier_table(vlan) */
-	{ "classifier_table", 6, 6, decode_command_parameter_cls_table_vlan },
+	{ "classifier_table", 6, 6, parse_command_parameter_cls_table_vlan },
 	{ "_get_client_id",   1, 1, NULL },
 	{ "status",           1, 1, NULL },
 	{ "exit",             1, 1, NULL },
-	{ "component",        3, 5, decode_command_parameter_component },
-	{ "port",             5, 8, decode_command_parameter_port },
+	{ "component",        3, 5, parse_command_parameter_component },
+	{ "port",             5, 8, parse_command_parameter_port },
 	/* termination     */
 	{ "",                 0, 0, NULL }
 };
 
-/* Decode command line parameters */
+/* Parse command line parameters */
 static int
-decode_command_in_list(struct spp_command_request *request,
+parse_command_in_list(struct spp_command_request *request,
 			const char *request_str,
 			struct spp_parse_command_error *error)
 {
 	int ret = SPP_RET_OK;
 	int command_name_check = 0;
-	struct decode_command_list *list = NULL;
+	struct parse_command_list *list = NULL;
 	int i = 0;
 	int argc = 0;
 	char *argv[SPP_CMD_MAX_PARAMETERS];
@@ -1012,12 +1012,12 @@ decode_command_in_list(struct spp_command_request *request,
 	memset(tmp_str, 0x00, sizeof(tmp_str));
 
 	strcpy(tmp_str, request_str);
-	ret = decode_parameter_value(tmp_str, SPP_CMD_MAX_PARAMETERS,
+	ret = parse_parameter_value(tmp_str, SPP_CMD_MAX_PARAMETERS,
 			&argc, argv);
 	if (ret < SPP_RET_OK) {
 		RTE_LOG(ERR, SPP_COMMAND_DEC, "Parameter number over limit."
 				"request_str=%s\n", request_str);
-		return set_decode_error(error, WRONG_FORMAT, NULL);
+		return set_parse_error(error, WRONG_FORMAT, NULL);
 	}
 	RTE_LOG(DEBUG, SPP_COMMAND_DEC, "Decode array. num=%d\n", argc);
 
@@ -1043,18 +1043,18 @@ decode_command_in_list(struct spp_command_request *request,
 	if (command_name_check != 0) {
 		RTE_LOG(ERR, SPP_COMMAND_DEC, "Parameter number out of range."
 				"request_str=%s\n", request_str);
-		return set_decode_error(error, WRONG_FORMAT, NULL);
+		return set_parse_error(error, WRONG_FORMAT, NULL);
 	}
 
 	RTE_LOG(ERR, SPP_COMMAND_DEC,
 			"Unknown command. command=%s, request_str=%s\n",
 			argv[0], request_str);
-	return set_string_value_decode_error(error, argv[0], "command");
+	return set_string_value_parse_error(error, argv[0], "command");
 }
 
-/* decode request from no-null-terminated string */
+/* parse request from no-null-terminated string */
 int
-spp_command_decode_request(
+spp_parse_command_request(
 		struct spp_command_request *request,
 		const char *request_str, size_t request_str_len,
 		struct spp_parse_command_error *error)
@@ -1062,9 +1062,9 @@ spp_command_decode_request(
 	int ret = SPP_RET_NG;
 	int i;
 
-	/* decode request */
+	/* parse request */
 	request->num_command = 1;
-	ret = decode_command_in_list(request, request_str, error);
+	ret = parse_command_in_list(request, request_str, error);
 	if (unlikely(ret != SPP_RET_OK)) {
 		RTE_LOG(ERR, SPP_COMMAND_DEC,
 				"Cannot decode command request. "

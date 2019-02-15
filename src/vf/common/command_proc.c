@@ -812,9 +812,9 @@ execute_command(const struct spp_command *command)
 	return ret;
 }
 
-/* make decode error message for response */
+/* parse error message for response */
 static const char *
-make_decode_error_message(
+parse_error_message(
 		const struct spp_parse_command_error *parse_error,
 		char *message)
 {
@@ -872,9 +872,9 @@ set_command_results(struct command_result *result,
 	}
 }
 
-/* set decode error to command result */
+/* set parse error to command result */
 static void
-set_decode_error_to_results(struct command_result *results,
+set_parse_error_to_results(struct command_result *results,
 		const struct spp_command_request *request,
 		const struct spp_parse_command_error *parse_error)
 {
@@ -890,7 +890,7 @@ set_decode_error_to_results(struct command_result *results,
 	}
 
 	if (parse_error->code != 0) {
-		tmp_buff = make_decode_error_message(parse_error,
+		tmp_buff = parse_error_message(parse_error,
 				error_messege);
 		set_command_results(&results[request->num_valid_command],
 				CMD_FAILURE, tmp_buff);
@@ -1085,9 +1085,9 @@ append_vlan_block(const char *name, char **output,
 	return ret;
 }
 
-/* append a block of port numbers for JSON format */
+/* append a block of port entry for JSON format */
 static int
-append_port_block(char **output, const struct spp_port_index *port,
+append_port_entry(char **output, const struct spp_port_index *port,
 		const enum spp_port_rxtx rxtx)
 {
 	int ret = SPP_RET_NG;
@@ -1132,7 +1132,7 @@ append_port_array(const char *name, char **output, const int num,
 	}
 
 	for (i = 0; i < num; i++) {
-		ret = append_port_block(&tmp_buff, &ports[i], rxtx);
+		ret = append_port_entry(&tmp_buff, &ports[i], rxtx);
 		if (unlikely(ret < SPP_RET_OK))
 			return SPP_RET_NG;
 	}
@@ -1469,9 +1469,9 @@ append_info_value(const char *name, char **output)
 	return ret;
 }
 
-/* send response for decode error */
+/* send response for parse error */
 static void
-send_decode_error_response(int *sock,
+send_parse_error_response(int *sock,
 		const struct spp_command_request *request,
 		struct command_result *command_results)
 {
@@ -1480,7 +1480,7 @@ send_decode_error_response(int *sock,
 	tmp_buff = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);
 	if (unlikely(tmp_buff == NULL)) {
 		RTE_LOG(ERR, SPP_COMMAND_PROC, "allocate error. "
-				"(name = decode_error_response)\n");
+				"(name = parse_error_response)\n");
 		return;
 	}
 
@@ -1498,7 +1498,7 @@ send_decode_error_response(int *sock,
 	if (unlikely(msg == NULL)) {
 		spp_strbuf_free(tmp_buff);
 		RTE_LOG(ERR, SPP_COMMAND_PROC, "allocate error. "
-				"(name = decode_error_response)\n");
+				"(name = parse_error_response)\n");
 		return;
 	}
 	ret = append_json_block_brackets("", &msg, tmp_buff);
@@ -1511,14 +1511,14 @@ send_decode_error_response(int *sock,
 	}
 
 	RTE_LOG(DEBUG, SPP_COMMAND_PROC,
-			"Make command response (decode error). "
+			"Make command response (parse error). "
 			"response_str=\n%s\n", msg);
 
 	/* send response to requester */
 	ret = spp_send_message(sock, msg, strlen(msg));
 	if (unlikely(ret != SPP_RET_OK)) {
 		RTE_LOG(ERR, SPP_COMMAND_PROC,
-				"Failed to send decode error response.\n");
+				"Failed to send parse error response.\n");
 		/* not return */
 	}
 
@@ -1624,14 +1624,14 @@ process_request(int *sock, const char *request_str, size_t request_str_len)
 			"request_str=\n%.*s\n",
 			(int)request_str_len, request_str);
 
-	/* decode request message */
-	ret = spp_command_decode_request(
+	/* parse request message */
+	ret = spp_parse_command_request(
 			&request, request_str, request_str_len, &parse_error);
 	if (unlikely(ret != SPP_RET_OK)) {
 		/* send error response */
-		set_decode_error_to_results(command_results, &request,
+		set_parse_error_to_results(command_results, &request,
 				&parse_error);
-		send_decode_error_response(sock, &request, command_results);
+		send_parse_error_response(sock, &request, command_results);
 		RTE_LOG(DEBUG, SPP_COMMAND_PROC,
 				"End command request processing.\n");
 		return SPP_RET_OK;

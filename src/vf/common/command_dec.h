@@ -191,7 +191,7 @@ struct spp_parse_command_error {
  * @retval SPP_RET_OK succeeded.
  * @retval !0 failed.
  */
-int spp_command_decode_request(struct spp_command_request *request,
+int spp_parse_command_request(struct spp_command_request *request,
 		const char *request_str, size_t request_str_len,
 		struct spp_parse_command_error *error);
 

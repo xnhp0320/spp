@@ -18,7 +18,7 @@
 #include "../../mirror/spp_mirror.h"
 #endif /* SPP_MIRROR_MODULE */
 #include "command_conn.h"
-#include "command_dec.h"
+#include "command_parse.h"
 #include "command_proc.h"
 
 /**
@@ -28,16 +28,16 @@
 #define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER2
 
 /* request message initial size */
-#define CMD_RES_ERR_MSG_SIZE  128
+#define CMD_RES_ERR_MSG_SIZE  160
 #define CMD_TAG_APPEND_SIZE   16
 #define CMD_REQ_BUF_INIT_SIZE 2048
 #define CMD_RES_BUF_INIT_SIZE 2048
 
-#define JSON_APPEND_COMMA(flg)    ((flg)?", ":"")
-#define JSON_APPEND_VALUE(format) "%s\"%s\": "format
-#define JSON_APPEND_ARRAY         "%s\"%s\": [ %s ]"
-#define JSON_APPEND_BLOCK         "%s\"%s\": { %s }"
-#define JSON_APPEND_BLOCK_NONAME  "%s%s{ %s }"
+#define JSON_APPEND_COMMA(flg)    ((flg)?",":"")
+#define JSON_APPEND_VALUE(format) "%s\"%s\":"format
+#define JSON_APPEND_ARRAY         "%s\"%s\":[%s]"
+#define JSON_APPEND_BLOCK         "%s\"%s\":{%s}"
+#define JSON_APPEND_BLOCK_NONAME  "%s%s{%s}"
 
 /* command execution result type */
 enum command_result_type {
@@ -52,7 +52,7 @@ struct command_result {
 	int code;
 
 	/* Response message */
-	char msg[SPP_CMD_NAME_BUFSZ];
+	char msg[CMD_NAME_BUFSZ];
 
 	/* Detailed response message */
 	char error_message[CMD_RES_ERR_MSG_SIZE];
@@ -60,11 +60,23 @@ struct command_result {
 
 /* command response list control structure */
 struct command_response_list {
-	/* Tag name */
-	char tag_name[SPP_CMD_NAME_BUFSZ];
+	/* JSON Tag name */
+	char tag_name[CMD_NAME_BUFSZ];
 
 	/* Pointer to handling function */
 	int (*func)(const char *name, char **output, void *tmp);
+};
+
+/*
+ * classifier type string list
+ * do it same as the order of enum spp_classifier_type (spp_proc.h)
+ */
+const char *CLASSIFILER_TYPE_STATUS[] = {
+	"none",
+	"mac",
+	"vlan",
+
+	/* termination */ "",
 };
 
 /*
@@ -87,18 +99,6 @@ const char *PORT_ABILITY_STATUS_STRINGS[] = {
 	"none",
 	"add",
 	"del",
-
-	/* termination */ "",
-};
-
-/*
- * classifier type string list
- * do it same as the order of enum spp_classifier_type (spp_vf.h)
- */
-const char *CLASSIFILER_TYPE_STATUS_STRINGS[] = {
-	"none",
-	"mac",
-	"vlan",
 
 	/* termination */ "",
 };
@@ -522,7 +522,10 @@ spp_flush(void)
 	return ret;
 }
 
-/* Iterate core information to create response to status command */
+/**
+ * Iterate core information for number of available cores to
+ * append response for status command.
+ */
 static int
 spp_iterate_core_info(struct spp_iterate_core_params *params)
 {
@@ -540,7 +543,7 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 		if (core->num == 0) {
 			ret = (*params->element_proc)(
 				params, lcore_id,
-				"", SPP_TYPE_UNUSE_STR,
+				"", TYPE_UNUSE_STR,
 				0, NULL, 0, NULL);
 			if (unlikely(ret != 0)) {
 				RTE_LOG(ERR, SPP_COMMAND_PROC, "Cannot iterate"
@@ -631,7 +634,7 @@ spp_get_dpdk_port(enum port_type iface_type, int iface_no)
 static int
 append_json_comma(char **output)
 {
-	*output = spp_strbuf_append(*output, ", ", strlen(", "));
+	*output = spp_strbuf_append(*output, ",", strlen(","));
 	if (unlikely(*output == NULL)) {
 		RTE_LOG(ERR, SPP_COMMAND_PROC,
 				"JSON's comma failed to add.\n");
@@ -641,7 +644,10 @@ append_json_comma(char **output)
 	return SPP_RET_OK;
 }
 
-/* append data of unsigned integral type for JSON format */
+/**
+ * Append JSON formatted tag and its value to given `output` val. For example,
+ * `output` is `"core": 2` if the args of `name` is "core" and `value` is 2.
+ */
 static int
 append_json_uint_value(const char *name, char **output, unsigned int value)
 {
@@ -661,7 +667,11 @@ append_json_uint_value(const char *name, char **output, unsigned int value)
 	return SPP_RET_OK;
 }
 
-/* append data of integral type for JSON format */
+/**
+ * Append JSON formatted tag and its value to given `output` val. For example,
+ * `output` is `"client-id": 1`
+ * if the args of `name` is "client-id" and `value` is 1.
+ */
 static int
 append_json_int_value(const char *name, char **output, int value)
 {
@@ -681,7 +691,11 @@ append_json_int_value(const char *name, char **output, int value)
 	return SPP_RET_OK;
 }
 
-/* append data of string type for JSON format */
+/**
+ * Append JSON formatted tag and its value to given `output` val. For example,
+ * `output` is `"port": "phy:0"`
+ *  if the args of `name` is "port" and  `str` is ”phy:0”.
+ */
 static int
 append_json_str_value(const char *name, char **output, const char *str)
 {
@@ -701,7 +715,11 @@ append_json_str_value(const char *name, char **output, const char *str)
 	return SPP_RET_OK;
 }
 
-/* append brackets of the array for JSON format */
+/**
+ * Append JSON formatted tag and its value to given `output` val. For example,
+ * `output` is `"results":[{"result":"success"}]`
+ * if the args of `name` is "results" and `str` is "{"result":"success"}".
+ */
 static int
 append_json_array_brackets(const char *name, char **output, const char *str)
 {
@@ -1164,7 +1182,7 @@ append_core_element_value(
 	}
 
 	/* there is unnecessary data when "unuse" by type */
-	unuse_flg = strcmp(type, SPP_TYPE_UNUSE_STR);
+	unuse_flg = strcmp(type, TYPE_UNUSE_STR);
 
 	ret = append_json_uint_value("core", &tmp_buff, lcore_id);
 	if (unlikely(ret < SPP_RET_OK))
@@ -1251,7 +1269,7 @@ append_classifier_element_value(
 	spp_format_port_string(port_str, port->iface_type, port->iface_no);
 
 	ret = append_json_str_value("type", &tmp_buff,
-			CLASSIFILER_TYPE_STATUS_STRINGS[type]);
+				    CLASSIFILER_TYPE_STATUS[type]);
 	if (unlikely(ret < SPP_RET_OK))
 		return ret;
 
@@ -1614,7 +1632,7 @@ process_request(int *sock, const char *request_str, size_t request_str_len)
 
 	struct spp_command_request request;
 	struct spp_parse_command_error parse_error;
-	struct command_result command_results[SPP_CMD_MAX_COMMANDS];
+	struct command_result command_results[CMD_MAX_COMMANDS];
 
 	memset(&request, 0, sizeof(struct spp_command_request));
 	memset(&parse_error, 0, sizeof(struct spp_parse_command_error));

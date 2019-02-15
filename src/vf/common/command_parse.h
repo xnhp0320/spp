@@ -2,29 +2,29 @@
  * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef _COMMAND_DEC_H_
-#define _COMMAND_DEC_H_
+#ifndef _COMMAND_PARSE_H_
+#define _COMMAND_PARSE_H_
 
 /**
  * @file
- * SPP command decode
+ * SPP command parse
  *
- * Decode and validate the command message string.
+ * Parse and validate the command message string.
  */
 
 #include "spp_proc.h"
 
 /** max number of command per request */
-#define SPP_CMD_MAX_COMMANDS 32
+#define CMD_MAX_COMMANDS 32
 
 /** maximum number of parameters per command */
-#define SPP_CMD_MAX_PARAMETERS 8
+#define CMD_MAX_PARAMETERS 8
 
 /** command name string buffer size (include null char) */
-#define SPP_CMD_NAME_BUFSZ  32
+#define CMD_NAME_BUFSZ  32
 
 /** command value string buffer size (include null char) */
-#define SPP_CMD_VALUE_BUFSZ 111
+#define CMD_VALUE_BUFSZ 128
 
 /** parse error code */
 enum spp_parse_command_error_code {
@@ -92,7 +92,7 @@ struct spp_command_classifier_table {
 	int vid;
 
 	/** MAC address to be classified */
-	char mac[SPP_CMD_VALUE_BUFSZ];
+	char mac[CMD_VALUE_BUFSZ];
 
 	/** Destination port type and number */
 	struct spp_port_index port;
@@ -109,7 +109,7 @@ struct spp_command_component {
 	enum spp_command_action action;
 
 	/** Component name */
-	char name[SPP_CMD_NAME_BUFSZ];
+	char name[CMD_NAME_BUFSZ];
 
 	/** Logical core number */
 	unsigned int core;
@@ -130,7 +130,7 @@ struct spp_command_port {
 	enum spp_port_rxtx rxtx;
 
 	/** Attached component name */
-	char name[SPP_CMD_NAME_BUFSZ];
+	char name[CMD_NAME_BUFSZ];
 
 	/** Port ability */
 	struct spp_port_ability ability;
@@ -159,7 +159,7 @@ struct spp_command {
 struct spp_command_request {
 	int num_command;                /**< Number of accepted commands */
 	int num_valid_command;          /**< Number of executed commands */
-	struct spp_command commands[SPP_CMD_MAX_COMMANDS];
+	struct spp_command commands[CMD_MAX_COMMANDS];
 					/**<Information of executed commands */
 
 	int is_requested_client_id;     /**< Id for get_client_id command */
@@ -170,8 +170,8 @@ struct spp_command_request {
 /** parse error information */
 struct spp_parse_command_error {
 	int code;                            /**< Error code */
-	char value_name[SPP_CMD_NAME_BUFSZ]; /**< Error value name */
-	char value[SPP_CMD_VALUE_BUFSZ];     /**< Error value */
+	char value_name[CMD_NAME_BUFSZ]; /**< Error value name */
+	char value[CMD_VALUE_BUFSZ];     /**< Error value */
 };
 
 /**
@@ -195,4 +195,4 @@ int spp_parse_command_request(struct spp_command_request *request,
 		const char *request_str, size_t request_str_len,
 		struct spp_parse_command_error *error);
 
-#endif /* _COMMAND_DEC_H_ */
+#endif /* _COMMAND_PARSE_H_ */

@@ -9,50 +9,48 @@
 #include <rte_log.h>
 #include <rte_branch_prediction.h>
 
-#include "command_dec.h"
+#include "command_parse.h"
 
 /**
  * TODO(Ogasawara) change log names.
  *  After a naming convention decision.
  */
-#define RTE_LOGTYPE_SPP_COMMAND_DEC RTE_LOGTYPE_USER2
+#define RTE_LOGTYPE_SPP_COMMAND_PARSE RTE_LOGTYPE_USER2
 
 /*
  * classifier type string list
  * do it same as the order of enum spp_classifier_type (spp_proc.h)
  */
-const char *CLASSIFILER_TYPE_STRINGS[] = {
+const char *CLASSIFILER_TYPE[] = {
 	"none",
 	"mac",
 	"vlan",
-
-	/* termination */ "",
+	"", /* termination */
 };
 
 /*
  * command action type string list
  * do it same as the order of enum spp_command_action (command_dec.h)
  */
-const char *COMMAND_ACTION_STRINGS[] = {
+const char *COMMAND_ACTION[] = {
 	"none",
 	"start",
 	"stop",
 	"add",
 	"del",
+	"", /* termination */
 
-	/* termination */ "",
 };
 
 /*
  * port rxtx string list
  * do it same as the order of enum spp_port_rxtx (spp_vf.h)
  */
-const char *PORT_RXTX_STRINGS[] = {
+const char *PORT_RXTX_STR[] = {
 	"none",
 	"rx",
 	"tx",
-
-	/* termination */ "",
+	"", /* termination */
 };
 
 /*
@@ -63,13 +61,12 @@ const char *PORT_ABILITY_STRINGS[] = {
 	"none",
 	"add_vlantag",
 	"del_vlantag",
-
-	/* termination */ "",
+	"", /* termination */
 };
 
 /* Check mac address used on the port for registering or removing */
 static int
-spp_check_classid_used_port(
+check_class_id_used_port(
 		int vid, uint64_t mac_addr,
 		enum port_type iface_type, int iface_no)
 {
@@ -85,20 +82,20 @@ spp_check_classid_used_port(
 
 /* Check if port has been added. */
 static int
-spp_check_added_port(enum port_type iface_type, int iface_no)
+check_added_port(enum port_type iface_type, int iface_no)
 {
 	struct spp_port_info *port = get_iface_info(iface_type, iface_no);
 	return port->iface_type != UNDEF;
 }
 
 /**
- * Separate port id of combination of iface type and number and
+ * Separate resource uid of combination of iface type and number and
  * assign to given argument, iface_type and iface_no.
  *
  * For instance, 'ring:0' is separated to 'ring' and '0'.
  */
 static int
-spp_convert_port_to_iface(const char *port,
+parse_resource_uid(const char *port,
 		    enum port_type *iface_type,
 		    int *iface_no)
 {
@@ -124,7 +121,7 @@ spp_convert_port_to_iface(const char *port,
 		no_str = &port[strlen(SPP_IFTYPE_RING_STR)+1];
 	} else {
 		/* OTHER */
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Unknown interface type. (port = %s)\n", port);
 		return SPP_RET_NG;
 	}
@@ -133,7 +130,7 @@ spp_convert_port_to_iface(const char *port,
 	int ret_no = strtol(no_str, &endptr, 0);
 	if (unlikely(no_str == endptr) || unlikely(*endptr != '\0')) {
 		/* No IF number */
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"No interface number. (port = %s)\n", port);
 		return SPP_RET_NG;
 	}
@@ -141,7 +138,7 @@ spp_convert_port_to_iface(const char *port,
 	*iface_type = type;
 	*iface_no = ret_no;
 
-	RTE_LOG(DEBUG, SPP_COMMAND_DEC, "Port = %s => Type = %d No = %d\n",
+	RTE_LOG(DEBUG, SPP_COMMAND_PARSE, "Port = %s => Type = %d No = %d\n",
 			port, *iface_type, *iface_no);
 	return SPP_RET_OK;
 }
@@ -150,25 +147,25 @@ spp_convert_port_to_iface(const char *port,
 static enum spp_component_type
 spp_convert_component_type(const char *type_str)
 {
-	RTE_LOG(DEBUG, SPP_COMMAND_DEC, "type_str is %s\n", type_str);
+	RTE_LOG(DEBUG, SPP_COMMAND_PARSE, "type_str is %s\n", type_str);
 #ifdef SPP_VF_MODULE
-	if (strncmp(type_str, SPP_TYPE_CLASSIFIER_MAC_STR,
-			strlen(SPP_TYPE_CLASSIFIER_MAC_STR)+1) == 0) {
+	if (strncmp(type_str, TYPE_CLASSIFIER_STR,
+			strlen(TYPE_CLASSIFIER_STR)+1) == 0) {
 		/* Classifier */
 		return SPP_COMPONENT_CLASSIFIER_MAC;
-	} else if (strncmp(type_str, SPP_TYPE_MERGE_STR,
-			strlen(SPP_TYPE_MERGE_STR)+1) == 0) {
+	} else if (strncmp(type_str, TYPE_MERGER_STR,
+			strlen(TYPE_MERGER_STR)+1) == 0) {
 		/* Merger */
 		return SPP_COMPONENT_MERGE;
-	} else if (strncmp(type_str, SPP_TYPE_FORWARD_STR,
-			strlen(SPP_TYPE_FORWARD_STR)+1) == 0) {
+	} else if (strncmp(type_str, TYPE_FORWARDER_STR,
+			strlen(TYPE_FORWARDER_STR)+1) == 0) {
 		/* Forwarder */
 		return SPP_COMPONENT_FORWARD;
 	}
 #endif /* SPP_VF_MODULE */
 #ifdef SPP_MIRROR_MODULE
-	if (strncmp(type_str, SPP_TYPE_MIRROR_STR,
-			strlen(SPP_TYPE_MIRROR_STR)+1) == 0)
+	if (strncmp(type_str, TYPE_MIRROR_STR,
+			strlen(TYPE_MIRROR_STR)+1) == 0)
 		/* Mirror */
 		return SPP_COMPONENT_MIRROR;
 #endif /* SPP_MIRROR_MODULE */
@@ -277,7 +274,7 @@ get_uint_value(
 static int
 parse_str_value(char *output, const char *arg_val)
 {
-	if (strlen(arg_val) >= SPP_CMD_VALUE_BUFSZ)
+	if (strlen(arg_val) >= CMD_VALUE_BUFSZ)
 		return SPP_RET_NG;
 
 	strcpy(output, arg_val);
@@ -290,10 +287,9 @@ parse_port_value(void *output, const char *arg_val)
 {
 	int ret = SPP_RET_OK;
 	struct spp_port_index *port = output;
-	ret = spp_convert_port_to_iface(arg_val, &port->iface_type,
-							&port->iface_no);
+	ret = parse_resource_uid(arg_val, &port->iface_type, &port->iface_no);
 	if (unlikely(ret != 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Bad port. val=%s\n", arg_val);
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Bad port. val=%s\n", arg_val);
 		return SPP_RET_NG;
 	}
 
@@ -307,7 +303,7 @@ decode_core_value(void *output, const char *arg_val)
 	int ret = SPP_RET_OK;
 	ret = get_uint_value(output, arg_val, 0, RTE_MAX_LCORE-1);
 	if (unlikely(ret < 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Bad core id. val=%s\n",
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Bad core id. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
 	}
@@ -321,9 +317,9 @@ decode_component_action_value(void *output, const char *arg_val,
 				int allow_override __attribute__ ((unused)))
 {
 	int ret = SPP_RET_OK;
-	ret = get_arrary_index(arg_val, COMMAND_ACTION_STRINGS);
+	ret = get_arrary_index(arg_val, COMMAND_ACTION);
 	if (unlikely(ret <= 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Unknown component action. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
@@ -331,7 +327,7 @@ decode_component_action_value(void *output, const char *arg_val,
 
 	if (unlikely(ret != CMD_ACTION_START) &&
 			unlikely(ret != CMD_ACTION_STOP)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Unknown component action. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
@@ -353,7 +349,7 @@ decode_component_name_value(void *output, const char *arg_val,
 	if (component->action == CMD_ACTION_START) {
 		ret = spp_get_component_id(arg_val);
 		if (unlikely(ret >= 0)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC,
+			RTE_LOG(ERR, SPP_COMMAND_PARSE,
 					"Component name in used. val=%s\n",
 					arg_val);
 			return SPP_RET_NG;
@@ -391,7 +387,7 @@ decode_component_type_value(void *output, const char *arg_val,
 
 	comp_type = spp_convert_component_type(arg_val);
 	if (unlikely(comp_type <= 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Unknown component type. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
@@ -407,9 +403,9 @@ decode_port_action_value(void *output, const char *arg_val,
 				int allow_override __attribute__ ((unused)))
 {
 	int ret = SPP_RET_OK;
-	ret = get_arrary_index(arg_val, COMMAND_ACTION_STRINGS);
+	ret = get_arrary_index(arg_val, COMMAND_ACTION);
 	if (unlikely(ret <= 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Unknown port action. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
@@ -417,7 +413,7 @@ decode_port_action_value(void *output, const char *arg_val,
 
 	if (unlikely(ret != CMD_ACTION_ADD) &&
 			unlikely(ret != CMD_ACTION_DEL)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Unknown port action. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
@@ -448,7 +444,7 @@ decode_port_port_value(void *output, const char *arg_val, int allow_override)
 				(spp_check_used_port(tmp_port.iface_type,
 						tmp_port.iface_no,
 						SPP_PORT_RXTX_TX) >= 0)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC,
+			RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Port in used. (port command) val=%s\n",
 				arg_val);
 			return SPP_RET_NG;
@@ -467,9 +463,9 @@ decode_port_rxtx_value(void *output, const char *arg_val, int allow_override)
 	int ret = SPP_RET_OK;
 	struct spp_command_port *port = output;
 
-	ret = get_arrary_index(arg_val, PORT_RXTX_STRINGS);
+	ret = get_arrary_index(arg_val, PORT_RXTX_STR);
 	if (unlikely(ret <= 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Unknown port rxtx. val=%s\n",
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Unknown port rxtx. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
 	}
@@ -479,7 +475,7 @@ decode_port_rxtx_value(void *output, const char *arg_val, int allow_override)
 		if ((port->action == CMD_ACTION_ADD) &&
 				(spp_check_used_port(port->port.iface_type,
 					port->port.iface_no, ret) >= 0)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC,
+			RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Port in used. (port command) val=%s\n",
 				arg_val);
 			return SPP_RET_NG;
@@ -499,7 +495,7 @@ decode_port_name_value(void *output, const char *arg_val,
 
 	ret = spp_get_component_id(arg_val);
 	if (unlikely(ret < SPP_RET_OK)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Unknown component name. val=%s\n", arg_val);
 		return SPP_RET_NG;
 	}
@@ -520,7 +516,7 @@ decode_port_vlan_operation(void *output, const char *arg_val,
 	case SPP_PORT_ABILITY_OPE_NONE:
 		ret = get_arrary_index(arg_val, PORT_ABILITY_STRINGS);
 		if (unlikely(ret <= 0)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC,
+			RTE_LOG(ERR, SPP_COMMAND_PARSE,
 					"Unknown port ability. val=%s\n",
 					arg_val);
 			return SPP_RET_NG;
@@ -553,7 +549,7 @@ decode_port_vid(void *output, const char *arg_val,
 		ret = get_int_value(&ability->data.vlantag.vid,
 			arg_val, 0, ETH_VLAN_ID_MAX);
 		if (unlikely(ret < SPP_RET_OK)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC,
+			RTE_LOG(ERR, SPP_COMMAND_PARSE,
 					"Bad VLAN ID. val=%s\n", arg_val);
 			return SPP_RET_NG;
 		}
@@ -581,7 +577,7 @@ decode_port_pcp(void *output, const char *arg_val,
 		ret = get_int_value(&ability->data.vlantag.pcp,
 				arg_val, 0, SPP_VLAN_PCP_MAX);
 		if (unlikely(ret < SPP_RET_OK)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC,
+			RTE_LOG(ERR, SPP_COMMAND_PARSE,
 					"Bad VLAN PCP. val=%s\n", arg_val);
 			return SPP_RET_NG;
 		}
@@ -608,7 +604,7 @@ decode_mac_addr_str_value(void *output, const char *arg_val,
 
 	ret = spp_change_mac_str_to_int64(str_val);
 	if (unlikely(ret < SPP_RET_OK)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Bad mac address string. val=%s\n", str_val);
 		return SPP_RET_NG;
 	}
@@ -623,16 +619,16 @@ decode_classifier_action_value(void *output, const char *arg_val,
 				int allow_override __attribute__ ((unused)))
 {
 	int ret = SPP_RET_OK;
-	ret = get_arrary_index(arg_val, COMMAND_ACTION_STRINGS);
+	ret = get_arrary_index(arg_val, COMMAND_ACTION);
 	if (unlikely(ret <= 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Unknown port action. val=%s\n",
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Unknown port action. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
 	}
 
 	if (unlikely(ret != CMD_ACTION_ADD) &&
 			unlikely(ret != CMD_ACTION_DEL)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Unknown port action. val=%s\n",
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Unknown port action. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
 	}
@@ -647,9 +643,9 @@ decode_classifier_type_value(void *output, const char *arg_val,
 				int allow_override __attribute__ ((unused)))
 {
 	int ret = SPP_RET_OK;
-	ret = get_arrary_index(arg_val, CLASSIFILER_TYPE_STRINGS);
+	ret = get_arrary_index(arg_val, CLASSIFILER_TYPE);
 	if (unlikely(ret <= 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Unknown classifier type. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
@@ -667,7 +663,7 @@ decode_classifier_vid_value(void *output, const char *arg_val,
 	int ret = SPP_RET_NG;
 	ret = get_int_value(output, arg_val, 0, ETH_VLAN_ID_MAX);
 	if (unlikely(ret < SPP_RET_OK)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Bad VLAN ID. val=%s\n",
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Bad VLAN ID. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
 	}
@@ -688,9 +684,9 @@ decode_classifier_port_value(void *output, const char *arg_val,
 	if (ret < SPP_RET_OK)
 		return SPP_RET_NG;
 
-	if (spp_check_added_port(tmp_port.iface_type,
+	if (check_added_port(tmp_port.iface_type,
 					tmp_port.iface_no) == 0) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Port not added. val=%s\n",
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Port not added. val=%s\n",
 				arg_val);
 		return SPP_RET_NG;
 	}
@@ -699,9 +695,9 @@ decode_classifier_port_value(void *output, const char *arg_val,
 		classifier_table->vid = ETH_VLAN_ID_MAX;
 
 	if (unlikely(classifier_table->action == CMD_ACTION_ADD)) {
-		if (!spp_check_classid_used_port(ETH_VLAN_ID_MAX, 0,
+		if (!check_class_id_used_port(ETH_VLAN_ID_MAX, 0,
 				tmp_port.iface_type, tmp_port.iface_no)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC, "Port in used. "
+			RTE_LOG(ERR, SPP_COMMAND_PARSE, "Port in used. "
 					"(classifier_table command) val=%s\n",
 					arg_val);
 			return SPP_RET_NG;
@@ -711,10 +707,10 @@ decode_classifier_port_value(void *output, const char *arg_val,
 		if (mac_addr < 0)
 			return SPP_RET_NG;
 
-		if (!spp_check_classid_used_port(classifier_table->vid,
+		if (!check_class_id_used_port(classifier_table->vid,
 				(uint64_t)mac_addr,
 				tmp_port.iface_type, tmp_port.iface_no)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC, "Port in used. "
+			RTE_LOG(ERR, SPP_COMMAND_PARSE, "Port in used. "
 					"(classifier_table command) val=%s\n",
 					arg_val);
 			return SPP_RET_NG;
@@ -738,7 +734,7 @@ struct parse_parameter_list {
 
 /* parameter list for each command */
 static struct parse_parameter_list
-parameter_list[][SPP_CMD_MAX_PARAMETERS] = {
+parameter_list[][CMD_MAX_PARAMETERS] = {
 	{                                /* classifier_table(mac) */
 		{
 			.name = "action",
@@ -885,7 +881,7 @@ parse_command_parameter_component(struct spp_command_request *request,
 				((char *)&request->commands[0]+list->offset),
 				argv[pi], 0);
 		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC,
+			RTE_LOG(ERR, SPP_COMMAND_PARSE,
 					"Bad value. command=%s, name=%s, "
 					"index=%d, value=%s\n",
 					argv[0], list->name, pi, argv[pi]);
@@ -926,7 +922,7 @@ parse_command_parameter_cls_table_vlan(struct spp_command_request *request,
 				((char *)&request->commands[0]+list->offset),
 				argv[pi], 0);
 		if (unlikely(ret < SPP_RET_OK)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC, "Bad value. "
+			RTE_LOG(ERR, SPP_COMMAND_PARSE, "Bad value. "
 				"command=%s, name=%s, index=%d, value=%s\n",
 					argv[0], list->name, pi, argv[pi]);
 			return set_string_value_parse_error(error, argv[pi],
@@ -959,7 +955,7 @@ parse_command_parameter_port(struct spp_command_request *request,
 				((char *)&request->commands[0]+list->offset),
 				argv[pi], flag);
 		if (unlikely(ret < SPP_RET_OK)) {
-			RTE_LOG(ERR, SPP_COMMAND_DEC, "Bad value. "
+			RTE_LOG(ERR, SPP_COMMAND_PARSE, "Bad value. "
 				"command=%s, name=%s, index=%d, value=%s\n",
 					argv[0], list->name, pi, argv[pi]);
 			return set_string_value_parse_error(error, argv[pi],
@@ -1006,20 +1002,19 @@ parse_command_in_list(struct spp_command_request *request,
 	struct parse_command_list *list = NULL;
 	int i = 0;
 	int argc = 0;
-	char *argv[SPP_CMD_MAX_PARAMETERS];
-	char tmp_str[SPP_CMD_MAX_PARAMETERS*SPP_CMD_VALUE_BUFSZ];
+	char *argv[CMD_MAX_PARAMETERS];
+	char tmp_str[CMD_MAX_PARAMETERS*CMD_VALUE_BUFSZ];
 	memset(argv, 0x00, sizeof(argv));
 	memset(tmp_str, 0x00, sizeof(tmp_str));
 
 	strcpy(tmp_str, request_str);
-	ret = parse_parameter_value(tmp_str, SPP_CMD_MAX_PARAMETERS,
-			&argc, argv);
+	ret = parse_parameter_value(tmp_str, CMD_MAX_PARAMETERS, &argc, argv);
 	if (ret < SPP_RET_OK) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Parameter number over limit."
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Parameter number over limit."
 				"request_str=%s\n", request_str);
 		return set_parse_error(error, WRONG_FORMAT, NULL);
 	}
-	RTE_LOG(DEBUG, SPP_COMMAND_DEC, "Decode array. num=%d\n", argc);
+	RTE_LOG(DEBUG, SPP_COMMAND_PARSE, "Parse array. num=%d\n", argc);
 
 	for (i = 0; command_list[i].name[0] != '\0'; i++) {
 		list = &command_list[i];
@@ -1041,12 +1036,13 @@ parse_command_in_list(struct spp_command_request *request,
 	}
 
 	if (command_name_check != 0) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Parameter number out of range."
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
+				"Parameter number out of range. "
 				"request_str=%s\n", request_str);
 		return set_parse_error(error, WRONG_FORMAT, NULL);
 	}
 
-	RTE_LOG(ERR, SPP_COMMAND_DEC,
+	RTE_LOG(ERR, SPP_COMMAND_PARSE,
 			"Unknown command. command=%s, request_str=%s\n",
 			argv[0], request_str);
 	return set_string_value_parse_error(error, argv[0], "command");
@@ -1066,8 +1062,8 @@ spp_parse_command_request(
 	request->num_command = 1;
 	ret = parse_command_in_list(request, request_str, error);
 	if (unlikely(ret != SPP_RET_OK)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
-				"Cannot decode command request. "
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
+				"Cannot parse command request. "
 				"ret=%d, request_str=%.*s\n",
 				ret, (int)request_str_len, request_str);
 		return ret;

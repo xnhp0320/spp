@@ -11,6 +11,10 @@
 #include "spp_port.h"
 #include "ringlatencystats.h"
 
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
 #define RTE_LOGTYPE_SPP_PORT RTE_LOGTYPE_USER2
 
 /* Port ability management information */

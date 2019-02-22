@@ -205,9 +205,9 @@ spp_forward_get_component_status(
 	}
 
 	if (path->type == SPP_COMPONENT_MERGE)
-		component_type = SPP_TYPE_MERGE_STR;
+		component_type = TYPE_MERGER_STR;
 	else
-		component_type = SPP_TYPE_FORWARD_STR;
+		component_type = TYPE_FORWARDER_STR;
 
 	memset(rx_ports, 0x00, sizeof(rx_ports));
 	for (cnt = 0; cnt < path->num_rx; cnt++) {

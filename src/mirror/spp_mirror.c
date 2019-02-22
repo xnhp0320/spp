@@ -15,7 +15,6 @@
 #include "spp_proc.h"
 #include "spp_mirror.h"
 #include "command_proc.h"
-#include "command_dec.h"
 #include "spp_port.h"
 
 /* Declare global variables */
@@ -490,7 +489,7 @@ spp_mirror_get_component_status(
 		return SPP_RET_NG;
 	}
 
-	component_type = SPP_TYPE_MIRROR_STR;
+	component_type = TYPE_MIRROR_STR;
 
 	memset(rx_ports, 0x00, sizeof(rx_ports));
 	for (cnt = 0; cnt < path->num_rx; cnt++) {

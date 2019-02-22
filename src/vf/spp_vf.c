@@ -11,7 +11,6 @@
 #include "classifier_mac.h"
 #include "spp_forward.h"
 #include "command_proc.h"
-#include "command_dec.h"
 #include "spp_port.h"
 
 /* Declare global variables */

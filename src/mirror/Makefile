@@ -17,7 +17,7 @@ SRCS-y += ../shared/common.c
 SRCS-y += ../shared/secondary/utils.c ../shared/secondary/add_port.c
 SRCS-y += ../vf/common/spp_proc.c ../vf/common/spp_port.c
 SRCS-y += ../vf/common/command_conn.c ../vf/common/command_proc.c
-SRCS-y += ../vf/common/command_dec.c
+SRCS-y += ../vf/common/command_parse.c
 SRCS-y += ../vf/common/ringlatencystats.c ../vf/common/string_buffer.c
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API

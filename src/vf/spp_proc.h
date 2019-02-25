@@ -2,8 +2,8 @@
  * Copyright(c) 2018-2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef _SPP_PROC_H_
-#define _SPP_PROC_H_
+#ifndef _SPP_VF_PROC_H_
+#define _SPP_VF_PROC_H_
 
 /**
  * @file
@@ -712,4 +712,4 @@ void spp_get_mng_data_addr(struct startup_param **startup_param_addr,
 			   int **change_component_addr,
 			   struct cancel_backup_info **backup_info_addr);
 
-#endif /* _SPP_PROC_H_ */
+#endif /* _SPP_VF_PROC_H_ */

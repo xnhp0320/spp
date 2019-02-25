@@ -2,8 +2,8 @@
  * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef _COMMAND_PARSE_H_
-#define _COMMAND_PARSE_H_
+#ifndef _SPP_VF_COMMAND_PARSE_H_
+#define _SPP_VF_COMMAND_PARSE_H_
 
 /**
  * @file
@@ -195,4 +195,4 @@ int spp_parse_command_request(struct spp_command_request *request,
 		const char *request_str, size_t request_str_len,
 		struct spp_parse_command_error *error);
 
-#endif /* _COMMAND_PARSE_H_ */
+#endif /* _SPP_VF_COMMAND_PARSE_H_ */

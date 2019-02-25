@@ -14,9 +14,6 @@
 
 #include "spp_proc.h"
 
-/** Calculate TCI of VLAN tag. */
-#define SPP_VLANTAG_CALC_TCI(id, pcp) (((pcp & 0x07) << 13) | (id & 0x0fff))
-
 /** Type for changing index. */
 enum port_ability_chg_index_type {
 	/** Type for changing index to reference area. */

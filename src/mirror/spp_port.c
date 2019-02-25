@@ -41,18 +41,14 @@ struct port_ability_port_mng_info {
 	struct port_ability_mng_info tx;
 };
 
-/* Information for VLAN tag management. */
+/* Information for port management. */
 struct port_ability_port_mng_info g_port_mng_info[RTE_MAX_ETHPORTS];
-
-/* TPID of VLAN. */
-static uint16_t g_vlan_tpid;
 
 /* Initialize port ability. */
 void
 spp_port_ability_init(void)
 {
 	int cnt = 0;
-	g_vlan_tpid = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
 	memset(g_port_mng_info, 0x00, sizeof(g_port_mng_info));
 	for (cnt = 0; cnt < RTE_MAX_ETHPORTS; cnt++) {
 		g_port_mng_info[cnt].rx.ref_index = 0;
@@ -82,125 +78,6 @@ spp_port_ability_get_info(
 		break;
 	}
 	*info = mng->ability[mng->ref_index];
-}
-
-/* Calculation and Setting of FCS. */
-static inline void
-set_fcs_packet(struct rte_mbuf *pkt)
-{
-	uint32_t *fcs = NULL;
-	fcs = rte_pktmbuf_mtod_offset(pkt, uint32_t *, pkt->data_len);
-	*fcs = rte_net_crc_calc(rte_pktmbuf_mtod(pkt, void *),
-			pkt->data_len, RTE_NET_CRC32_ETH);
-}
-
-/* Add VLAN tag to packet. */
-static inline int
-add_vlantag_packet(
-		struct rte_mbuf *pkt,
-		const union spp_ability_data *data)
-{
-	struct ether_hdr *old_ether = NULL;
-	struct ether_hdr *new_ether = NULL;
-	struct vlan_hdr  *vlan      = NULL;
-	const struct spp_vlantag_info *vlantag = &data->vlantag;
-
-	old_ether = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
-	if (old_ether->ether_type == g_vlan_tpid) {
-		/* For packets with VLAN tags, only VLAN ID is updated */
-		new_ether = old_ether;
-		vlan = (struct vlan_hdr *)&new_ether[1];
-	} else {
-		/* For packets without VLAN tag, add VLAN tag. */
-		new_ether = (struct ether_hdr *)rte_pktmbuf_prepend(pkt,
-				sizeof(struct vlan_hdr));
-		if (unlikely(new_ether == NULL)) {
-			RTE_LOG(ERR, SPP_PORT, "Failed to "
-					"get additional header area.\n");
-			return SPP_RET_NG;
-		}
-
-		rte_memcpy(new_ether, old_ether, sizeof(struct ether_hdr));
-		vlan = (struct vlan_hdr *)&new_ether[1];
-		vlan->eth_proto = new_ether->ether_type;
-		new_ether->ether_type = g_vlan_tpid;
-	}
-
-	vlan->vlan_tci = vlantag->tci;
-	set_fcs_packet(pkt);
-	return SPP_RET_OK;
-}
-
-/* Add VLAN tag to all packets. */
-static inline int
-add_vlantag_all_packets(
-		struct rte_mbuf **pkts, int nb_pkts,
-		const union spp_ability_data *data)
-{
-	int ret = SPP_RET_OK;
-	int cnt = 0;
-	for (cnt = 0; cnt < nb_pkts; cnt++) {
-		ret = add_vlantag_packet(pkts[cnt], data);
-		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, SPP_PORT,
-					"Failed to add VLAN tag."
-					"(pkts %d/%d)\n", cnt, nb_pkts);
-			break;
-		}
-	}
-	return cnt;
-}
-
-/* Delete VLAN tag to packet. */
-static inline int
-del_vlantag_packet(
-		struct rte_mbuf *pkt,
-		const union spp_ability_data *data __attribute__ ((unused)))
-{
-	struct ether_hdr *old_ether = NULL;
-	struct ether_hdr *new_ether = NULL;
-	uint32_t *old, *new;
-
-	old_ether = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
-	if (old_ether->ether_type == g_vlan_tpid) {
-		/* For packets without VLAN tag, delete VLAN tag. */
-		new_ether = (struct ether_hdr *)rte_pktmbuf_adj(pkt,
-				sizeof(struct vlan_hdr));
-		if (unlikely(new_ether == NULL)) {
-			RTE_LOG(ERR, SPP_PORT, "Failed to "
-					"delete unnecessary header area.\n");
-			return SPP_RET_NG;
-		}
-
-		old = (uint32_t *)old_ether;
-		new = (uint32_t *)new_ether;
-		new[2] = old[2];
-		new[1] = old[1];
-		new[0] = old[0];
-		old[0] = 0;
-		set_fcs_packet(pkt);
-	}
-	return SPP_RET_OK;
-}
-
-/* Delete VLAN tag to all packets. */
-static inline int
-del_vlantag_all_packets(
-		struct rte_mbuf **pkts, int nb_pkts,
-		const union spp_ability_data *data)
-{
-	int ret = SPP_RET_OK;
-	int cnt = 0;
-	for (cnt = 0; cnt < nb_pkts; cnt++) {
-		ret = del_vlantag_packet(pkts[cnt], data);
-		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, SPP_PORT,
-					"Failed to del VLAN tag."
-					"(pkts %d/%d)\n", cnt, nb_pkts);
-			break;
-		}
-	}
-	return cnt;
 }
 
 /* Change index of management information. */
@@ -263,7 +140,6 @@ port_ability_set_ability(
 	struct port_ability_mng_info *mng         = NULL;
 	struct spp_port_ability      *in_ability  = port->ability;
 	struct spp_port_ability      *out_ability = NULL;
-	struct spp_vlantag_info      *tag         = NULL;
 
 	port_mng->iface_type = port->iface_type;
 	port_mng->iface_no   = port->iface_no;
@@ -290,18 +166,6 @@ port_ability_set_ability(
 		memcpy(&out_ability[out_cnt], &in_ability[in_cnt],
 				sizeof(struct spp_port_ability));
 
-		switch (out_ability[out_cnt].ope) {
-		case SPP_PORT_ABILITY_OPE_ADD_VLANTAG:
-			tag = &out_ability[out_cnt].data.vlantag;
-			tag->tci = rte_cpu_to_be_16(SPP_VLANTAG_CALC_TCI(
-					tag->vid, tag->pcp));
-			break;
-		case SPP_PORT_ABILITY_OPE_DEL_VLANTAG:
-		default:
-			/* Nothing to do. */
-			break;
-		}
-
 		out_cnt++;
 	}
 
@@ -326,50 +190,6 @@ spp_port_ability_update(const struct spp_component_info *component)
 	}
 }
 
-/* Definition of functions that operate port abilities. */
-typedef int (*port_ability_func)(
-		struct rte_mbuf **pkts, int nb_pkts,
-		const union spp_ability_data *data);
-
-/* List of functions per port ability. */
-port_ability_func port_ability_function_list[] = {
-	NULL,                    /* None */
-	add_vlantag_all_packets, /* Add VLAN tag */
-	del_vlantag_all_packets, /* Del VLAN tag */
-	NULL                     /* Termination */
-};
-
-/* Each packet operation of port capability. */
-static inline int
-port_ability_each_operation(uint16_t port_id,
-		struct rte_mbuf **pkts, const uint16_t nb_pkts,
-		enum spp_port_rxtx rxtx)
-{
-	int cnt, buf;
-	int ok_pkts = nb_pkts;
-	struct spp_port_ability *info = NULL;
-
-	spp_port_ability_get_info(port_id, rxtx, &info);
-	if (unlikely(info[0].ope == SPP_PORT_ABILITY_OPE_NONE))
-		return nb_pkts;
-
-	for (cnt = 0; cnt < SPP_PORT_ABILITY_MAX; cnt++) {
-		if (info[cnt].ope == SPP_PORT_ABILITY_OPE_NONE)
-			break;
-
-		ok_pkts = port_ability_function_list[info[cnt].ope](
-				pkts, ok_pkts, &info->data);
-	}
-
-	/* Discard remained packets to release mbuf. */
-	if (unlikely(ok_pkts < nb_pkts)) {
-		for (buf = ok_pkts; buf < nb_pkts; buf++)
-			rte_pktmbuf_free(pkts[buf]);
-	}
-
-	return ok_pkts;
-}
-
 /* Wrapper function for rte_eth_rx_burst(). */
 inline uint16_t
 spp_eth_rx_burst(
@@ -379,17 +199,16 @@ spp_eth_rx_burst(
 	uint16_t nb_rx = 0;
 	nb_rx = rte_eth_rx_burst(port_id, 0, rx_pkts, nb_pkts);
 	if (unlikely(nb_rx == 0))
-		return SPP_RET_OK;
+		return 0;
 
 #ifdef SPP_RINGLATENCYSTATS_ENABLE
 	if (g_port_mng_info[port_id].iface_type == RING)
 		spp_ringlatencystats_calculate_latency(
 				g_port_mng_info[port_id].iface_no,
-				rx_pkts, nb_pkts);
+				rx_pkts, nb_rx);
 #endif /* SPP_RINGLATENCYSTATS_ENABLE */
 
-	return port_ability_each_operation(port_id, rx_pkts, nb_rx,
-			SPP_PORT_RXTX_RX);
+	return nb_rx;
 }
 
 /* Wrapper function for rte_eth_tx_burst(). */
@@ -398,12 +217,6 @@ spp_eth_tx_burst(
 		uint16_t port_id, uint16_t queue_id  __attribute__ ((unused)),
 		struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	uint16_t nb_tx = 0;
-	nb_tx = port_ability_each_operation(port_id, tx_pkts, nb_pkts,
-			SPP_PORT_RXTX_TX);
-	if (unlikely(nb_tx == 0))
-		return SPP_RET_OK;
-
 #ifdef SPP_RINGLATENCYSTATS_ENABLE
 	if (g_port_mng_info[port_id].iface_type == RING)
 		spp_ringlatencystats_add_time_stamp(
@@ -411,5 +224,5 @@ spp_eth_tx_burst(
 				tx_pkts, nb_pkts);
 #endif /* SPP_RINGLATENCYSTATS_ENABLE */
 
-	return rte_eth_tx_burst(port_id, 0, tx_pkts, nb_tx);
+	return rte_eth_tx_burst(port_id, 0, tx_pkts, nb_pkts);
 }

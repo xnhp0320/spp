@@ -58,12 +58,6 @@ enum spp_command_action {
  *            defined in command_dec.c
  */
 enum spp_command_type {
-	/** classifier_table command(mac) */
-	CMD_CLASSIFIER_TABLE_MAC,
-
-	/** classifier_table command(VLAN) */
-	CMD_CLASSIFIER_TABLE_VLAN,
-
 	/** get_client_id command */
 	CMD_CLIENT_ID,
 
@@ -78,24 +72,6 @@ enum spp_command_type {
 
 	/** port command */
 	CMD_PORT,
-};
-
-/** "classifier_table" command specific parameters */
-struct spp_command_classifier_table {
-	/** Action identifier (add or del) */
-	enum spp_command_action action;
-
-	/** Classify type (currently only for mac) */
-	enum spp_classifier_type type;
-
-	/** VLAN ID to be classified */
-	int vid;
-
-	/** MAC address to be classified */
-	char mac[CMD_VALUE_BUFSZ];
-
-	/** Destination port type and number */
-	struct spp_port_index port;
 };
 
 /* "flush" command specific parameters */
@@ -131,9 +107,6 @@ struct spp_command_port {
 
 	/** Attached component name */
 	char name[CMD_NAME_BUFSZ];
-
-	/** Port ability */
-	struct spp_port_ability ability;
 };
 
 /** command parameters */
@@ -141,9 +114,6 @@ struct spp_command {
 	enum spp_command_type type; /**< Command type */
 
 	union {
-		/** Structured data for classifier_table command  */
-		struct spp_command_classifier_table classifier_table;
-
 		/** Structured data for flush command  */
 		struct spp_command_flush flush;
 

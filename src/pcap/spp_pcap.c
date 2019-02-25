@@ -960,8 +960,6 @@ main(int argc, char *argv[])
 		if (unlikely(ret_mng != 0))
 			break;
 
-		spp_port_ability_init();
-
 		/* Setup connection for accepting commands from controller */
 		int ret_command_init = spp_command_proc_init(
 				g_startup_param.server_ip,

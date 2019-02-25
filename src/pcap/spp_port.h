@@ -14,58 +14,6 @@
 
 #include "spp_proc.h"
 
-/** Calculate TCI of VLAN tag. */
-#define SPP_VLANTAG_CALC_TCI(id, pcp) (((pcp & 0x07) << 13) | (id & 0x0fff))
-
-/** Type for changing index. */
-enum port_ability_chg_index_type {
-	/** Type for changing index to reference area. */
-	PORT_ABILITY_CHG_INDEX_REF,
-
-	/** Type for changing index to update area. */
-	PORT_ABILITY_CHG_INDEX_UPD,
-};
-
-/** Initialize port ability. */
-void spp_port_ability_init(void);
-
-/**
- * Get information of port ability.
- *
- * @param port_id
- *  The port identifier of the Ethernet device.
- * @param rxtx
- *  rx/tx identifier of port_id.
- * @param info
- *  Port ability information.
- */
-extern void spp_port_ability_get_info(
-		int port_id, enum spp_port_rxtx rxtx,
-		struct spp_port_ability **info);
-
-/**
- * Change index of management information.
- *
- * @param port_id
- *  The port identifier of the Ethernet device.
- * @param rxtx
- *  rx/tx identifier of port_id.
- * @param type
- *  Type for changing index.
- */
-void spp_port_ability_change_index(
-		enum port_ability_chg_index_type type,
-		int port_id, enum spp_port_rxtx rxtx);
-
-/**
- * Update port capability.
- *
- * @param component_info
- *  The pointer to struct spp_component_info.@n
- *  The data for updating the internal data of port ability.
- */
-void spp_port_ability_update(const struct spp_component_info *component);
-
 /**
  * Wrapper function for rte_eth_rx_burst().
  *

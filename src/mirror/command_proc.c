@@ -10,13 +10,7 @@
 
 #include "spp_port.h"
 #include "string_buffer.h"
-#ifdef SPP_VF_MODULE
-#include "../classifier_mac.h"
-#include "../spp_forward.h"
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
-#include "../../mirror/spp_mirror.h"
-#endif /* SPP_MIRROR_MODULE */
+#include "spp_mirror.h"
 #include "command_conn.h"
 #include "command_parse.h"
 #include "command_proc.h"
@@ -67,42 +61,6 @@ struct command_response_list {
 	int (*func)(const char *name, char **output, void *tmp);
 };
 
-/*
- * classifier type string list
- * do it same as the order of enum spp_classifier_type (spp_proc.h)
- */
-const char *CLASSIFILER_TYPE_STATUS[] = {
-	"none",
-	"mac",
-	"vlan",
-
-	/* termination */ "",
-};
-
-/*
- * seconary type string list
- * do it same the order enum secondary_type (spp_proc.h)
- */
-const char *SECONDARY_PROCESS_TYPE_SRINGS[] = {
-	"none",
-	"vf",
-	"mirror",
-
-	/* termination */ "",
-};
-
-/*
- * port ability string list
- * do it same as the order of enum spp_port_ability_type (spp_vf.h)
- */
-const char *PORT_ABILITY_STATUS_STRINGS[] = {
-	"none",
-	"add",
-	"del",
-
-	/* termination */ "",
-};
-
 /* get client id */
 static int
 spp_get_client_id(void)
@@ -114,113 +72,12 @@ spp_get_client_id(void)
 	return startup_param->client_id;
 }
 
-/* get process type */
-static int
-spp_get_process_type(void)
-{
-	struct startup_param *startup_param;
-
-	spp_get_mng_data_addr(&startup_param,
-			NULL, NULL, NULL, NULL, NULL, NULL);
-	return startup_param->secondary_type;
-}
-
 /* Check if port has been flushed. */
 static int
 spp_check_flush_port(enum port_type iface_type, int iface_no)
 {
 	struct spp_port_info *port = get_iface_info(iface_type, iface_no);
 	return port->dpdk_port >= 0;
-}
-
-/* update classifier table according to the specified action(add or del). */
-static int
-spp_update_classifier_table(
-		enum spp_command_action action,
-		enum spp_classifier_type type __attribute__ ((unused)),
-		int vid,
-		const char *mac_addr_str,
-		const struct spp_port_index *port)
-{
-	struct spp_port_info *port_info = NULL;
-	int64_t ret_mac = 0;
-	uint64_t mac_addr = 0;
-
-	RTE_LOG(DEBUG, SPP_COMMAND_PROC, "update_classifier_table "
-			"( type = mac, mac addr = %s, port = %d:%d )\n",
-			mac_addr_str, port->iface_type, port->iface_no);
-
-	ret_mac = spp_change_mac_str_to_int64(mac_addr_str);
-	if (unlikely(ret_mac == -1)) {
-		RTE_LOG(ERR, SPP_COMMAND_PROC,
-			"MAC address format error. ( mac = %s )\n",
-			mac_addr_str);
-		return SPP_RET_NG;
-	}
-	mac_addr = (uint64_t)ret_mac;
-
-	port_info = get_iface_info(port->iface_type, port->iface_no);
-	if (unlikely(port_info == NULL)) {
-		RTE_LOG(ERR, SPP_COMMAND_PROC, "No port. ( port = %d:%d )\n",
-				port->iface_type, port->iface_no);
-		return SPP_RET_NG;
-	}
-	if (unlikely(port_info->iface_type == UNDEF)) {
-		RTE_LOG(ERR, SPP_COMMAND_PROC,
-				"Port not added. ( port = %d:%d )\n",
-				port->iface_type, port->iface_no);
-		return SPP_RET_NG;
-	}
-
-	if (action == CMD_ACTION_DEL) {
-		/* Delete */
-		if ((port_info->class_id.vlantag.vid != 0) &&
-				unlikely(port_info->class_id.vlantag.vid !=
-				vid)) {
-			RTE_LOG(ERR, SPP_COMMAND_PROC, "VLAN ID is different. "
-					"( vid = %d )\n", vid);
-			return SPP_RET_NG;
-		}
-		if ((port_info->class_id.mac_addr != 0) &&
-			unlikely(port_info->class_id.mac_addr !=
-					mac_addr)) {
-			RTE_LOG(ERR, SPP_COMMAND_PROC,
-					"MAC address is different. "
-					"( mac = %s )\n", mac_addr_str);
-			return SPP_RET_NG;
-		}
-
-		port_info->class_id.vlantag.vid = ETH_VLAN_ID_MAX;
-		port_info->class_id.mac_addr    = 0;
-		memset(port_info->class_id.mac_addr_str, 0x00,
-							SPP_MIN_STR_LEN);
-
-	} else if (action == CMD_ACTION_ADD) {
-		/* Setting */
-		if (unlikely(port_info->class_id.vlantag.vid !=
-				ETH_VLAN_ID_MAX)) {
-			RTE_LOG(ERR, SPP_COMMAND_PROC, "Port in used. "
-					"( port = %d:%d, vlan = %d != %d )\n",
-					port->iface_type, port->iface_no,
-					port_info->class_id.vlantag.vid, vid);
-			return SPP_RET_NG;
-		}
-		if (unlikely(port_info->class_id.mac_addr != 0)) {
-			RTE_LOG(ERR, SPP_COMMAND_PROC, "Port in used. "
-					"( port = %d:%d, mac = %s != %s )\n",
-					port->iface_type, port->iface_no,
-					port_info->class_id.mac_addr_str,
-					mac_addr_str);
-			return SPP_RET_NG;
-		}
-
-		port_info->class_id.vlantag.vid = vid;
-		port_info->class_id.mac_addr    = mac_addr;
-		strcpy(port_info->class_id.mac_addr_str, mac_addr_str);
-	}
-
-	set_component_change_port(port_info, SPP_PORT_RXTX_TX);
-	return SPP_RET_OK;
 }
 
 /**
@@ -301,12 +158,6 @@ spp_update_component(
 		info = (core_info + tmp_lcore_id);
 		core = &info->core[info->upd_index];
 
-#ifdef SPP_VF_MODULE
-		/* initialize classifier information */
-		if (comp_info->type == SPP_COMPONENT_CLASSIFIER_MAC)
-			init_classifier_info(component_id);
-#endif /* SPP_VF_MODULE */
-
 		ret_del = del_component_info(component_id,
 				core->num, core->id);
 		if (ret_del >= 0)
@@ -341,21 +192,6 @@ check_port_count(int component_type, enum spp_port_rxtx rxtx, int num_rx,
 				" port_type=%d, rx=%d, tx=%d\n",
 				rxtx, num_rx, num_tx);
 	switch (component_type) {
-	case SPP_COMPONENT_FORWARD:
-		if (num_rx > 1 || num_tx > 1)
-			return SPP_RET_NG;
-		break;
-
-	case SPP_COMPONENT_MERGE:
-		if (num_tx > 1)
-			return SPP_RET_NG;
-		break;
-
-	case SPP_COMPONENT_CLASSIFIER_MAC:
-		if (num_rx > 1)
-			return SPP_RET_NG;
-		break;
-
 	case SPP_COMPONENT_MIRROR:
 		if (num_rx > 1 || num_tx > 2)
 			return SPP_RET_NG;
@@ -378,14 +214,12 @@ static int
 spp_update_port(enum spp_command_action action,
 		const struct spp_port_index *port,
 		enum spp_port_rxtx rxtx,
-		const char *name,
-		const struct spp_port_ability *ability)
+		const char *name)
 {
 	int ret = SPP_RET_NG;
 	int ret_check = -1;
 	int ret_del = -1;
 	int component_id = 0;
-	int cnt = 0;
 	struct spp_component_info *comp_info = NULL;
 	struct spp_port_info *port_info = NULL;
 	int *num = NULL;
@@ -423,23 +257,6 @@ spp_update_port(enum spp_command_action action,
 		/* Check whether a port has been already registered. */
 		if (ret_check >= SPP_RET_OK) {
 			/* registered */
-			if (ability->ope == SPP_PORT_ABILITY_OPE_ADD_VLANTAG) {
-				while ((cnt < SPP_PORT_ABILITY_MAX) &&
-					    (port_info->ability[cnt].ope !=
-					    SPP_PORT_ABILITY_OPE_ADD_VLANTAG))
-					cnt++;
-				if (cnt >= SPP_PORT_ABILITY_MAX) {
-					RTE_LOG(ERR, SPP_COMMAND_PROC,
-						"update VLAN tag "
-						"Non-registratio\n");
-					return SPP_RET_NG;
-				}
-				memcpy(&port_info->ability[cnt], ability,
-					sizeof(struct spp_port_ability));
-
-				ret = SPP_RET_OK;
-				break;
-			}
 			return SPP_RET_OK;
 		}
 
@@ -447,21 +264,6 @@ spp_update_port(enum spp_command_action action,
 			RTE_LOG(ERR, SPP_COMMAND_PROC, "Cannot assign port "
 					"over the maximum number.\n");
 			return SPP_RET_NG;
-		}
-
-		if (ability->ope != SPP_PORT_ABILITY_OPE_NONE) {
-			while ((cnt < SPP_PORT_ABILITY_MAX) &&
-					(port_info->ability[cnt].ope !=
-					SPP_PORT_ABILITY_OPE_NONE)) {
-				cnt++;
-			}
-			if (cnt >= SPP_PORT_ABILITY_MAX) {
-				RTE_LOG(ERR, SPP_COMMAND_PROC,
-						"No space of port ability.\n");
-				return SPP_RET_NG;
-			}
-			memcpy(&port_info->ability[cnt], ability,
-					sizeof(struct spp_port_ability));
 		}
 
 		port_info->iface_type = port->iface_type;
@@ -472,16 +274,6 @@ spp_update_port(enum spp_command_action action,
 		break;
 
 	case CMD_ACTION_DEL:
-		for (cnt = 0; cnt < SPP_PORT_ABILITY_MAX; cnt++) {
-			if (port_info->ability[cnt].ope ==
-					SPP_PORT_ABILITY_OPE_NONE)
-				continue;
-
-			if (port_info->ability[cnt].rxtx == rxtx)
-				memset(&port_info->ability[cnt], 0x00,
-					sizeof(struct spp_port_ability));
-		}
-
 		ret_del = get_del_port_element(port_info, *num, ports);
 		if (ret_del == 0)
 			(*num)--; /* If deleted, decrement number. */
@@ -559,25 +351,10 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 			spp_get_mng_data_addr(NULL, NULL, &comp_info_base,
 							NULL, NULL, NULL, NULL);
 			comp_info = (comp_info_base + core->id[cnt]);
-#ifdef SPP_VF_MODULE
-			if (comp_info->type == SPP_COMPONENT_CLASSIFIER_MAC) {
-				ret = spp_classifier_get_component_status(
-						lcore_id,
-						core->id[cnt],
-						params);
-			} else {
-				ret = spp_forward_get_component_status(
-						lcore_id,
-						core->id[cnt],
-						params);
-			}
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
 			ret = spp_mirror_get_component_status(
 						lcore_id,
 						core->id[cnt],
 						params);
-#endif /* SPP_MIRROR_MODULE */
 			if (unlikely(ret != 0)) {
 				RTE_LOG(ERR, SPP_COMMAND_PROC, "Cannot iterate"
 						" core information. "
@@ -589,45 +366,6 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 	}
 
 	return SPP_RET_OK;
-}
-
-/* Iterate classifier_table to create response to status command */
-#ifdef SPP_VF_MODULE
-static int
-spp_iterate_classifier_table(
-		struct spp_iterate_classifier_table_params *params)
-{
-	int ret;
-
-	ret = spp_classifier_mac_iterate_table(params);
-	if (unlikely(ret != 0)) {
-		RTE_LOG(ERR, SPP_COMMAND_PROC,
-				"Cannot iterate classifier_mac_table.\n");
-		return SPP_RET_NG;
-	}
-
-	return SPP_RET_OK;
-}
-#endif /* SPP_VF_MODULE */
-
-/* Get port number assigned by DPDK lib */
-static int
-spp_get_dpdk_port(enum port_type iface_type, int iface_no)
-{
-	struct iface_info *iface_info = NULL;
-
-	spp_get_mng_data_addr(NULL, &iface_info,
-				NULL, NULL, NULL, NULL, NULL);
-	switch (iface_type) {
-	case PHY:
-		return iface_info->nic[iface_no].dpdk_port;
-	case RING:
-		return iface_info->ring[iface_no].dpdk_port;
-	case VHOST:
-		return iface_info->vhost[iface_no].dpdk_port;
-	default:
-		return SPP_RET_NG;
-	}
 }
 
 /* append a comma for JSON format */
@@ -770,27 +508,6 @@ execute_command(const struct spp_command *command)
 	int ret = SPP_RET_OK;
 
 	switch (command->type) {
-	case CMD_CLASSIFIER_TABLE_MAC:
-	case CMD_CLASSIFIER_TABLE_VLAN:
-		if (command->type == CMD_CLASSIFIER_TABLE_MAC)
-			RTE_LOG(INFO, SPP_COMMAND_PROC,
-				"Execute classifier_table command(MAC).\n");
-		else
-			RTE_LOG(INFO, SPP_COMMAND_PROC,
-				"Execute classifier_table command(VLAN).\n");
-		ret = spp_update_classifier_table(
-				command->spec.classifier_table.action,
-				command->spec.classifier_table.type,
-				command->spec.classifier_table.vid,
-				command->spec.classifier_table.mac,
-				&command->spec.classifier_table.port);
-		if (ret == 0) {
-			RTE_LOG(INFO, SPP_COMMAND_PROC,
-					"Execute flush.\n");
-			ret = spp_flush();
-		}
-		break;
-
 	case CMD_COMPONENT:
 		RTE_LOG(INFO, SPP_COMMAND_PROC,
 				"Execute component command.\n");
@@ -814,8 +531,7 @@ execute_command(const struct spp_command *command)
 				command->spec.port.action,
 				&command->spec.port.port,
 				command->spec.port.rxtx,
-				command->spec.port.name,
-				&command->spec.port.ability);
+				command->spec.port.name);
 		if (ret == 0) {
 			RTE_LOG(INFO, SPP_COMMAND_PROC,
 					"Execute flush.\n");
@@ -1006,8 +722,7 @@ static int
 append_process_type_value(const char *name, char **output,
 		void *tmp __attribute__ ((unused)))
 {
-	return append_json_str_value(name, output,
-			SECONDARY_PROCESS_TYPE_SRINGS[spp_get_process_type()]);
+	return append_json_str_value(name, output, "mirror");
 }
 
 /* append a list of interface numbers for JSON format */
@@ -1043,82 +758,9 @@ append_interface_value(const char *name, char **output,
 	return ret;
 }
 
-/* append a value of vlan for JSON format */
-static int
-append_vlan_value(char **output, const int ope, const int vid, const int pcp)
-{
-	int ret = SPP_RET_OK;
-	ret = append_json_str_value("operation", output,
-			PORT_ABILITY_STATUS_STRINGS[ope]);
-	if (unlikely(ret < SPP_RET_OK))
-		return SPP_RET_NG;
-
-	ret = append_json_int_value("id", output, vid);
-	if (unlikely(ret < 0))
-		return SPP_RET_NG;
-
-	ret = append_json_int_value("pcp", output, pcp);
-	if (unlikely(ret < 0))
-		return SPP_RET_NG;
-
-	return SPP_RET_OK;
-}
-
-/* append a block of vlan for JSON format */
-static int
-append_vlan_block(const char *name, char **output,
-		const int port_id, const enum spp_port_rxtx rxtx)
-{
-	int ret = SPP_RET_NG;
-	int i = 0;
-	struct spp_port_ability *info = NULL;
-	char *tmp_buff = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);
-	if (unlikely(tmp_buff == NULL)) {
-		RTE_LOG(ERR, SPP_COMMAND_PROC,
-				"allocate error. (name = %s)\n",
-				name);
-		return SPP_RET_NG;
-	}
-
-	spp_port_ability_get_info(port_id, rxtx, &info);
-	for (i = 0; i < SPP_PORT_ABILITY_MAX; i++) {
-		switch (info[i].ope) {
-		case SPP_PORT_ABILITY_OPE_ADD_VLANTAG:
-		case SPP_PORT_ABILITY_OPE_DEL_VLANTAG:
-			ret = append_vlan_value(&tmp_buff, info[i].ope,
-					info[i].data.vlantag.vid,
-					info[i].data.vlantag.pcp);
-			if (unlikely(ret < SPP_RET_OK))
-				return SPP_RET_NG;
-
-			/*
-			 * Change counter to "maximum+1" for exit the loop.
-			 * An if statement after loop termination is false
-			 * by "maximum+1 ".
-			 */
-			i = SPP_PORT_ABILITY_MAX + 1;
-			break;
-		default:
-			/* not used */
-			break;
-		}
-	}
-	if (i == SPP_PORT_ABILITY_MAX) {
-		ret = append_vlan_value(&tmp_buff, SPP_PORT_ABILITY_OPE_NONE,
-				0, 0);
-		if (unlikely(ret < SPP_RET_OK))
-			return SPP_RET_NG;
-	}
-
-	ret = append_json_block_brackets(name, output, tmp_buff);
-	spp_strbuf_free(tmp_buff);
-	return ret;
-}
-
 /* append a block of port entry for JSON format */
 static int
-append_port_entry(char **output, const struct spp_port_index *port,
-		const enum spp_port_rxtx rxtx)
+append_port_entry(char **output, const struct spp_port_index *port)
 {
 	int ret = SPP_RET_NG;
 	char port_str[CMD_TAG_APPEND_SIZE];
@@ -1134,12 +776,6 @@ append_port_entry(char **output, const struct spp_port_index *port,
 	if (unlikely(ret < SPP_RET_OK))
 		return SPP_RET_NG;
 
-	ret = append_vlan_block("vlan", &tmp_buff,
-			spp_get_dpdk_port(port->iface_type, port->iface_no),
-			rxtx);
-	if (unlikely(ret < SPP_RET_OK))
-		return SPP_RET_NG;
-
 	ret = append_json_block_brackets("", output, tmp_buff);
 	spp_strbuf_free(tmp_buff);
 	return ret;
@@ -1148,8 +784,7 @@ append_port_entry(char **output, const struct spp_port_index *port,
 /* append a list of port numbers for JSON format */
 static int
 append_port_array(const char *name, char **output, const int num,
-		const struct spp_port_index *ports,
-		const enum spp_port_rxtx rxtx)
+		const struct spp_port_index *ports)
 {
 	int ret = SPP_RET_NG;
 	int i = 0;
@@ -1162,7 +797,7 @@ append_port_array(const char *name, char **output, const int num,
 	}
 
 	for (i = 0; i < num; i++) {
-		ret = append_port_entry(&tmp_buff, &ports[i], rxtx);
+		ret = append_port_entry(&tmp_buff, &ports[i]);
 		if (unlikely(ret < SPP_RET_OK))
 			return SPP_RET_NG;
 	}
@@ -1212,12 +847,12 @@ append_core_element_value(
 
 	if (unuse_flg) {
 		ret = append_port_array("rx_port", &tmp_buff,
-				num_rx, rx_ports, SPP_PORT_RXTX_RX);
+				num_rx, rx_ports);
 		if (unlikely(ret < 0))
 			return ret;
 
 		ret = append_port_array("tx_port", &tmp_buff,
-				num_tx, tx_ports, SPP_PORT_RXTX_TX);
+				num_tx, tx_ports);
 		if (unlikely(ret < SPP_RET_OK))
 			return ret;
 	}
@@ -1257,92 +892,6 @@ append_core_value(const char *name, char **output,
 	return ret;
 }
 
-/* append one element of classifier table for JSON format */
-#ifdef SPP_VF_MODULE
-static int
-append_classifier_element_value(
-		struct spp_iterate_classifier_table_params *params,
-		enum spp_classifier_type type,
-		int vid, const char *mac,
-		const struct spp_port_index *port)
-{
-	int ret = SPP_RET_NG;
-	char *buff, *tmp_buff;
-	char port_str[CMD_TAG_APPEND_SIZE];
-	char value_str[SPP_MIN_STR_LEN];
-	buff = params->output;
-	tmp_buff = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);
-	if (unlikely(tmp_buff == NULL)) {
-		RTE_LOG(ERR, SPP_COMMAND_PROC,
-				"allocate error. (name = classifier_table)\n");
-		return ret;
-	}
-
-	spp_format_port_string(port_str, port->iface_type, port->iface_no);
-
-	ret = append_json_str_value("type", &tmp_buff,
-				    CLASSIFILER_TYPE_STATUS[type]);
-	if (unlikely(ret < SPP_RET_OK))
-		return ret;
-
-	memset(value_str, 0x00, SPP_MIN_STR_LEN);
-	switch (type) {
-	case SPP_CLASSIFIER_TYPE_MAC:
-		sprintf(value_str, "%s", mac);
-		break;
-	case SPP_CLASSIFIER_TYPE_VLAN:
-		sprintf(value_str, "%d/%s", vid, mac);
-		break;
-	default:
-		/* not used */
-		break;
-	}
-
-	ret = append_json_str_value("value", &tmp_buff, value_str);
-	if (unlikely(ret < 0))
-		return ret;
-
-	ret = append_json_str_value("port", &tmp_buff, port_str);
-	if (unlikely(ret < SPP_RET_OK))
-		return ret;
-
-	ret = append_json_block_brackets("", &buff, tmp_buff);
-	spp_strbuf_free(tmp_buff);
-	params->output = buff;
-	return ret;
-}
-#endif /* SPP_VF_MODULE */
-
-/* append a list of classifier table for JSON format */
-#ifdef SPP_VF_MODULE
-static int
-append_classifier_table_value(const char *name, char **output,
-		void *tmp __attribute__ ((unused)))
-{
-	int ret = SPP_RET_NG;
-	struct spp_iterate_classifier_table_params itr_params;
-	char *tmp_buff = spp_strbuf_allocate(CMD_RES_BUF_INIT_SIZE);
-	if (unlikely(tmp_buff == NULL)) {
-		RTE_LOG(ERR, SPP_COMMAND_PROC,
-				"allocate error. (name = %s)\n",
-				name);
-		return SPP_RET_NG;
-	}
-
-	itr_params.output = tmp_buff;
-	itr_params.element_proc = append_classifier_element_value;
-
-	ret = spp_iterate_classifier_table(&itr_params);
-	if (unlikely(ret != SPP_RET_OK)) {
-		spp_strbuf_free(itr_params.output);
-		return SPP_RET_NG;
-	}
-
-	ret = append_json_array_brackets(name, output, itr_params.output);
-	spp_strbuf_free(itr_params.output);
-	return ret;
-}
-#endif /* SPP_VF_MODULE */
 /* append string of command response list for JSON format */
 static int
 append_response_list_value(char **output,
@@ -1418,9 +967,6 @@ struct command_response_list response_info_list[] = {
 	{ "vhost",            append_interface_value },
 	{ "ring",             append_interface_value },
 	{ "core",             append_core_value },
-#ifdef SPP_VF_MODULE
-	{ "classifier_table", append_classifier_table_value },
-#endif /* SPP_VF_MODULE */
 	COMMAND_RESP_TAG_LIST_EMPTY
 };
 

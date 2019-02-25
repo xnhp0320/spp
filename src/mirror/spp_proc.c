@@ -17,13 +17,7 @@
 #include "shared/secondary/add_port.h"
 #include "shared/secondary/utils.h"
 
-#ifdef SPP_VF_MODULE
-#include "../spp_forward.h"
-#include "../classifier_mac.h"
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
-#include "../../mirror/spp_mirror.h"
-#endif /* SPP_MIRROR_MODULE */
+#include "spp_mirror.h"
 
 /**
  * TODO(Ogasawara) change log names.
@@ -51,7 +45,7 @@ static struct manage_data_addr_info g_mng_data_addr;
  * Make a hexdump of an array data in every 4 byte.
  * This function is used to dump core_info or component info.
  */
-void
+static void
 dump_buff(const char *name, const void *addr, const size_t size)
 {
 	size_t cnt = 0;
@@ -78,46 +72,9 @@ dump_buff(const char *name, const void *addr, const size_t size)
 	}
 }
 
-/* generation of the ring port */
-int
-spp_vf_add_ring_pmd(int ring_id)
-{
-	struct rte_ring *ring;
-	int ring_port_id;
-	uint16_t port_id = PORT_RESET;
-	char dev_name[RTE_ETH_NAME_MAX_LEN];
-
-	/* Lookup ring of given id */
-	ring = rte_ring_lookup(get_rx_queue_name(ring_id));
-	if (unlikely(ring == NULL)) {
-		RTE_LOG(ERR, SPP_PROC,
-			"Cannot get RX ring - is server process running?\n");
-		return SPP_RET_NG;
-	}
-
-	/* Create ring pmd */
-	snprintf(dev_name, RTE_ETH_NAME_MAX_LEN - 1, "net_ring_%s", ring->name);
-	/* check whether a port already exists. */
-	ring_port_id = rte_eth_dev_get_port_by_name(dev_name, &port_id);
-	if (port_id == PORT_RESET) {
-		ring_port_id = rte_eth_from_ring(ring);
-		if (ring_port_id < 0) {
-			RTE_LOG(ERR, SPP_PROC, "Cannot create eth dev with "
-						"rte_eth_from_ring()\n");
-			return SPP_RET_NG;
-		}
-	} else {
-		ring_port_id = port_id;
-		rte_eth_dev_start(ring_port_id);
-	}
-	RTE_LOG(INFO, SPP_PROC, "ring port add. (no = %d / port = %d)\n",
-			ring_id, ring_port_id);
-	return ring_port_id;
-}
-
 /* generation of the vhost port */
-int
-spp_vf_add_vhost_pmd(int index, int client)
+static int
+spp_mirror_add_vhost_pmd(int index, int client)
 {
 	struct rte_eth_conf port_conf = {
 		.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
@@ -298,7 +255,7 @@ get_iface_info(enum port_type iface_type, int iface_no)
 }
 
 /* Dump of core information */
-void
+static void
 dump_core_info(const struct core_mng_info *core_info)
 {
 	char str[SPP_NAME_STR_LEN];
@@ -320,7 +277,7 @@ dump_core_info(const struct core_mng_info *core_info)
 }
 
 /* Dump of component information */
-void
+static void
 dump_component_info(const struct spp_component_info *component_info)
 {
 	char str[SPP_NAME_STR_LEN];
@@ -349,7 +306,7 @@ dump_component_info(const struct spp_component_info *component_info)
 }
 
 /* Dump of interface information */
-void
+static void
 dump_interface_info(const struct iface_info *iface_info)
 {
 	const struct spp_port_info *port = NULL;
@@ -363,44 +320,32 @@ dump_interface_info(const struct iface_info *iface_info)
 		if (port->iface_type == UNDEF)
 			continue;
 
-		RTE_LOG(DEBUG, SPP_PROC, "phy  [%d] type=%d, no=%d, port=%d, "
-				"vid = %u, mac=%08lx(%s)\n",
-				cnt, port->iface_type, port->iface_no,
-				port->dpdk_port,
-				port->class_id.vlantag.vid,
-				port->class_id.mac_addr,
-				port->class_id.mac_addr_str);
+		RTE_LOG(DEBUG, SPP_PROC, "phy  [%d] type=%d, no=%d, "
+				"port=%d\n", cnt, port->iface_type,
+				port->iface_no,	port->dpdk_port);
 	}
 	for (cnt = 0; cnt < RTE_MAX_ETHPORTS; cnt++) {
 		port = &iface_info->vhost[cnt];
 		if (port->iface_type == UNDEF)
 			continue;
 
-		RTE_LOG(DEBUG, SPP_PROC, "vhost[%d] type=%d, no=%d, port=%d, "
-				"vid = %u, mac=%08lx(%s)\n",
-				cnt, port->iface_type, port->iface_no,
-				port->dpdk_port,
-				port->class_id.vlantag.vid,
-				port->class_id.mac_addr,
-				port->class_id.mac_addr_str);
+		RTE_LOG(DEBUG, SPP_PROC, "vhost[%d] type=%d, no=%d, "
+				"port=%d\n", cnt, port->iface_type,
+				port->iface_no, port->dpdk_port);
 	}
 	for (cnt = 0; cnt < RTE_MAX_ETHPORTS; cnt++) {
 		port = &iface_info->ring[cnt];
 		if (port->iface_type == UNDEF)
 			continue;
 
-		RTE_LOG(DEBUG, SPP_PROC, "ring [%d] type=%d, no=%d, port=%d, "
-				"vid = %u, mac=%08lx(%s)\n",
-				cnt, port->iface_type, port->iface_no,
-				port->dpdk_port,
-				port->class_id.vlantag.vid,
-				port->class_id.mac_addr,
-				port->class_id.mac_addr_str);
+		RTE_LOG(DEBUG, SPP_PROC, "ring [%d] type=%d, no=%d, "
+				"port=%d\n", cnt, port->iface_type,
+				port->iface_no, port->dpdk_port);
 	}
 }
 
 /* Dump of all management information */
-void
+static void
 dump_all_mng_info(
 		const struct core_mng_info *core,
 		const struct spp_component_info *component,
@@ -415,7 +360,7 @@ dump_all_mng_info(
 }
 
 /* Copy management information */
-void
+static void
 copy_mng_info(
 		struct core_mng_info *dst_core,
 		struct spp_component_info *dst_component,
@@ -488,18 +433,12 @@ init_iface_info(void)
 		p_iface_info->nic[port_cnt].iface_type = UNDEF;
 		p_iface_info->nic[port_cnt].iface_no   = port_cnt;
 		p_iface_info->nic[port_cnt].dpdk_port  = -1;
-		p_iface_info->nic[port_cnt].class_id.vlantag.vid =
-				ETH_VLAN_ID_MAX;
 		p_iface_info->vhost[port_cnt].iface_type = UNDEF;
 		p_iface_info->vhost[port_cnt].iface_no   = port_cnt;
 		p_iface_info->vhost[port_cnt].dpdk_port  = -1;
-		p_iface_info->vhost[port_cnt].class_id.vlantag.vid =
-				ETH_VLAN_ID_MAX;
 		p_iface_info->ring[port_cnt].iface_type = UNDEF;
 		p_iface_info->ring[port_cnt].iface_no   = port_cnt;
 		p_iface_info->ring[port_cnt].dpdk_port  = -1;
-		p_iface_info->ring[port_cnt].class_id.vlantag.vid =
-				ETH_VLAN_ID_MAX;
 	}
 }
 
@@ -552,7 +491,7 @@ set_nic_interface(void)
 	return SPP_RET_OK;
 }
 
-/* Setup management info for spp_vf */
+/* Setup management info for spp_mirror */
 int
 init_mng_data(void)
 {
@@ -626,15 +565,6 @@ del_vhost_sockfile(struct spp_port_info *vhost)
 
 		remove(get_vhost_iface_name(cnt));
 	}
-}
-
-/* Get component type of target component_info */
-enum spp_component_type
-spp_get_component_type(int id)
-{
-	struct spp_component_info *component_info =
-				(g_mng_data_addr.p_component_info + id);
-	return component_info->type;
 }
 
 /* Get core ID of target component */
@@ -838,7 +768,7 @@ flush_port(void)
 	for (cnt = 0; cnt < RTE_MAX_ETHPORTS; cnt++) {
 		port = &p_iface_info->vhost[cnt];
 		if ((port->iface_type != UNDEF) && (port->dpdk_port < 0)) {
-			ret = spp_vf_add_vhost_pmd(port->iface_no,
+			ret = spp_mirror_add_vhost_pmd(port->iface_no,
 				g_mng_data_addr.p_startup_param->vhost_client);
 			if (ret < 0)
 				return SPP_RET_NG;
@@ -890,7 +820,7 @@ flush_core(void)
 	}
 }
 
-/* Flush change for forwarder or classifier_mac */
+/* Flush change for mirror */
 int
 flush_component(void)
 {
@@ -908,15 +838,8 @@ flush_component(void)
 		component_info = (p_component_info + cnt);
 		spp_port_ability_update(component_info);
 
-#ifdef SPP_VF_MODULE
-		if (component_info->type == SPP_COMPONENT_CLASSIFIER_MAC)
-			ret = spp_classifier_mac_update(component_info);
-		else
-			ret = spp_forward_update(component_info);
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
 		ret = spp_mirror_update(component_info);
-#endif /* SPP_MIRROR_MODULE */
+
 		if (unlikely(ret < 0)) {
 			RTE_LOG(ERR, SPP_PROC, "Flush error. "
 					"( component = %s, type = %d)\n",
@@ -953,51 +876,6 @@ int spp_format_port_string(char *port, enum port_type iface_type, int iface_no)
 	sprintf(port, "%s:%d", iface_type_str, iface_no);
 
 	return SPP_RET_OK;
-}
-
-/* Change mac address of 'aa:bb:cc:dd:ee:ff' to int64 and return it */
-int64_t
-spp_change_mac_str_to_int64(const char *mac)
-{
-	int64_t ret_mac = 0;
-	int64_t token_val = 0;
-	int token_cnt = 0;
-	char tmp_mac[SPP_MIN_STR_LEN];
-	char *str = tmp_mac;
-	char *saveptr = NULL;
-	char *endptr = NULL;
-
-	RTE_LOG(DEBUG, SPP_PROC, "MAC address change. (mac = %s)\n", mac);
-
-	strcpy(tmp_mac, mac);
-	while (1) {
-		/* Split by colon(':') */
-		char *ret_tok = strtok_r(str, ":", &saveptr);
-		if (unlikely(ret_tok == NULL))
-			break;
-
-		/* Check for mal-formatted address */
-		if (unlikely(token_cnt >= ETHER_ADDR_LEN)) {
-			RTE_LOG(ERR, SPP_PROC, "MAC address format error. "
-					"(mac = %s)\n", mac);
-			return SPP_RET_NG;
-		}
-
-		/* Convert string to hex value */
-		int ret_tol = strtol(ret_tok, &endptr, 16);
-		if (unlikely(ret_tok == endptr) || unlikely(*endptr != '\0'))
-			break;
-
-		/* Append separated value to the result */
-		token_val = (int64_t)ret_tol;
-		ret_mac |= token_val << (token_cnt * 8);
-		token_cnt++;
-		str = NULL;
-	}
-
-	RTE_LOG(DEBUG, SPP_PROC, "MAC address change. (mac = %s => 0x%08lx)\n",
-			 mac, ret_mac);
-	return ret_mac;
 }
 
 /* Set mange data address */

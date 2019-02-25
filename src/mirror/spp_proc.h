@@ -15,14 +15,7 @@
 #include <netinet/in.h>
 #include "shared/common.h"
 
-/**
- * TODO(Yamashita) change type names.
- *  "merge" -> "merger", "forward" -> "forwarder".
- */
 /** Identifier string for each component (status command) */
-#define TYPE_CLASSIFIER_STR "classifier_mac"
-#define TYPE_MERGER_STR     "merge"
-#define TYPE_FORWARDER_STR  "forward"
 #define TYPE_MIRROR_STR	    "mirror"
 #define TYPE_UNUSE_STR	    "unuse"
 
@@ -46,23 +39,8 @@
 /** Maximum number of port abilities available */
 #define SPP_PORT_ABILITY_MAX 4
 
-/** Number of VLAN ID */
-#define SPP_NUM_VLAN_VID 4096
-
-/** Maximum VLAN PCP */
-#define SPP_VLAN_PCP_MAX 7
-
 /* Max number of core status check */
 #define SPP_CORE_STATUS_CHECK_MAX 5
-
-/** Character sting for default port of classifier */
-#define SPP_DEFAULT_CLASSIFIED_SPEC_STR     "default"
-
-/** Value for default MAC address of classifier */
-#define SPP_DEFAULT_CLASSIFIED_DMY_ADDR     0x010000000000
-
-/** Character sting for default MAC address of classifier */
-#define SPP_DEFAULT_CLASSIFIED_DMY_ADDR_STR "00:00:00:00:00:01"
 
 /* Sampling interval timer for latency evaluation */
 #define SPP_RING_LATENCY_STATS_SAMPLING_INTERVAL 1000000
@@ -80,17 +58,7 @@ enum spp_core_status {
 /* Process type for each component */
 enum spp_component_type {
 	SPP_COMPONENT_UNUSE,          /**< Not used */
-	SPP_COMPONENT_CLASSIFIER_MAC, /**< Classifier_mac */
-	SPP_COMPONENT_MERGE,	      /**< Merger */
-	SPP_COMPONENT_FORWARD,	      /**< Forwarder */
 	SPP_COMPONENT_MIRROR,	      /**< Mirror */
-};
-
-/* Classifier Type */
-enum spp_classifier_type {
-	SPP_CLASSIFIER_TYPE_NONE, /**< Type none */
-	SPP_CLASSIFIER_TYPE_MAC,  /**< MAC address */
-	SPP_CLASSIFIER_TYPE_VLAN  /**< VLAN ID */
 };
 
 enum spp_return_value {
@@ -107,16 +75,6 @@ enum spp_port_rxtx {
 	SPP_PORT_RXTX_RX,   /**< rx port */
 	SPP_PORT_RXTX_TX,   /**< tx port */
 	SPP_PORT_RXTX_ALL,  /**< rx/tx port */
-};
-
-/**
- * Port ability operation which indicates vlan tag operation on the port
- * (e.g. add vlan tag or delete vlan tag)
- */
-enum spp_port_ability_ope {
-	SPP_PORT_ABILITY_OPE_NONE,	  /**< none */
-	SPP_PORT_ABILITY_OPE_ADD_VLANTAG, /**< add VLAN tag */
-	SPP_PORT_ABILITY_OPE_DEL_VLANTAG, /**< delete VLAN tag */
 };
 
 /* getopt_long return value for long option */
@@ -138,13 +96,6 @@ enum copy_mng_flg {
 	COPY_MNG_FLG_ALLCOPY,
 };
 
-/* secondary process type used only from spp_vf and spp_mirror */
-enum secondary_type {
-	SECONDARY_TYPE_NONE,
-	SECONDARY_TYPE_VF,
-	SECONDARY_TYPE_MIRROR,
-};
-
 /**
  * Interface information structure
  */
@@ -153,34 +104,9 @@ struct spp_port_index {
 	int             iface_no;   /**< Interface number */
 };
 
-/** VLAN tag information */
-struct spp_vlantag_info {
-	int vid; /**< VLAN ID */
-	int pcp; /**< Priority Code Point */
-	int tci; /**< Tag Control Information */
-};
-
-/**
- * Data for each port ability which indicates vlantag related information
- * for the port
- */
-union spp_ability_data {
-	/** VLAN tag information */
-	struct spp_vlantag_info vlantag;
-};
-
 /** Port ability information */
 struct spp_port_ability {
-	enum spp_port_ability_ope ope; /**< Operation */
 	enum spp_port_rxtx rxtx;       /**< rx/tx identifier */
-	union spp_ability_data data;   /**< Port ability data */
-};
-
-/** Port class identifier for classifying */
-struct spp_port_class_identifier {
-	uint64_t mac_addr;                      /**< Mac address (binary) */
-	char     mac_addr_str[SPP_MIN_STR_LEN]; /**< Mac address (text) */
-	struct spp_vlantag_info vlantag;        /**< VLAN tag information */
 };
 
 /* Port info */
@@ -188,8 +114,6 @@ struct spp_port_info {
 	enum port_type iface_type;      /**< Interface type (phy/vhost/ring) */
 	int            iface_no;        /**< Interface number */
 	int            dpdk_port;       /**< DPDK port number */
-	struct spp_port_class_identifier class_id;
-					/**< Port class identifier */
 	struct spp_port_ability ability[SPP_PORT_ABILITY_MAX];
 					/**< Port ability */
 };
@@ -215,8 +139,6 @@ struct startup_param {
 				/* IP address stiring of spp-ctl */
 	int server_port;	/* Port Number of spp-ctl */
 	int vhost_client;	/* Flag for --vhost-client option */
-	enum secondary_type secondary_type;
-				/* secondary type */
 };
 
 /* Manage number of interfaces  and port information as global variable */
@@ -295,69 +217,6 @@ struct spp_iterate_core_params {
 	spp_iterate_core_element_proc element_proc;
 };
 
-struct spp_iterate_classifier_table_params;
-/**
- * definition of iterated classifier element procedure function
- * which is member of spp_iterate_classifier_table_params structure.
- * Above structure is used when listing classifier table information
- * (e.g) create resonse to status command.
- */
-typedef int (*spp_iterate_classifier_element_proc)(
-		struct spp_iterate_classifier_table_params *params,
-		enum spp_classifier_type type,
-		int vid, const char *mac,
-		const struct spp_port_index *port);
-
-/**
- * iterate classifier table parameters which is
- * used when listing classifier table content
- * (e.g.) create response to status command.
- */
-struct spp_iterate_classifier_table_params {
-	/* Output buffer */
-	void *output;
-
-	/* The function for creating classifier table information */
-	spp_iterate_classifier_element_proc element_proc;
-};
-
-/**
- * Make a hexdump of an array data in every 4 byte
- *
- * @param name
- *  dump name.
- * @param addr
- *  dump address.
- * @param size
- *  dump byte size.
- *
- */
-void dump_buff(const char *name, const void *addr, const size_t size);
-
-/**
- * added ring_pmd
- *
- * @param ring_id
- *  added ring id.
- *
- * @retval 0~   ring_port_id.
- * @retval -1   failed.
- */
-int spp_vf_add_ring_pmd(int ring_id);
-
-/**
- * added vhost_pmd
- *
- * @param index
- *  add vohst id.
- * @param client
- *  add client id.
- *
- * @retval 0~   vhost_port_id.
- * @retval -1   failed.
- */
-int spp_vf_add_vhost_pmd(int index, int client);
-
 /**
  * Get core status
  *
@@ -368,17 +227,6 @@ int spp_vf_add_vhost_pmd(int index, int client);
  *  Status of specified logical core.
  */
 enum spp_core_status spp_get_core_status(unsigned int lcore_id);
-
-/**
- * Get component type of target component_info
- *
- * @param id
- *  component ID.
- *
- * @return
- *  Type of component executed
- */
-enum spp_component_type spp_get_component_type(int id);
 
 /**
  * Run check_core_status() for SPP_CORE_STATUS_CHECK_MAX times with
@@ -436,36 +284,11 @@ void stop_process(int signal);
 struct spp_port_info *
 get_iface_info(enum port_type iface_type, int iface_no);
 
-/* Dump of core information */
-void dump_core_info(const struct core_mng_info *core_info);
-
-/* Dump of component information */
-void dump_component_info(const struct spp_component_info *component_info);
-
-/* Dump of interface information */
-void dump_interface_info(const struct iface_info *iface_info);
-
-/* Dump of all management information */
-void dump_all_mng_info(
-		const struct core_mng_info *core,
-		const struct spp_component_info *component,
-		const struct iface_info *interface);
-
-/* Copy management information */
-void copy_mng_info(
-		struct core_mng_info *dst_core,
-		struct spp_component_info *dst_component,
-		struct iface_info *dst_interface,
-		const struct core_mng_info *src_core,
-		const struct spp_component_info *src_component,
-		const struct iface_info *src_interface,
-		enum copy_mng_flg flg);
-
 /* Backup the management information */
 void backup_mng_info(struct cancel_backup_info *backup);
 
 /**
- * Setup management info for spp_vf
+ * Setup management info for spp_mirror
  */
 int init_mng_data(void);
 
@@ -642,17 +465,6 @@ int flush_component(void);
  */
 int
 spp_format_port_string(char *port, enum port_type iface_type, int iface_no);
-
-/**
- * Change mac address string to int64
- *
- * @param mac
- *  Character string of MAC address to be converted.
- *
- * @retval 0< int64 that store mac address
- * @retval SPP_RET_NG
- */
-int64_t spp_change_mac_str_to_int64(const char *mac);
 
 /**
  * Set mange data address

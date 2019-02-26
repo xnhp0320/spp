@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #ifndef __SPP_VF_H__
@@ -14,7 +14,5 @@
  */
 
 #include "shared/common.h"
-
-#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
 #endif /* __SPP_VF_H__ */

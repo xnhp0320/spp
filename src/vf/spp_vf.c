@@ -14,6 +14,12 @@
 #include "spp_port.h"
 
 /* Declare global variables */
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_VF RTE_LOGTYPE_USER2
+
 /* Logical core ID for main process */
 static unsigned int g_main_lcore_id = 0xffffffff;
 
@@ -42,7 +48,7 @@ static struct cancel_backup_info g_backup_info;
 static void
 usage(const char *progname)
 {
-	RTE_LOG(INFO, APP, "Usage: %s [EAL args] --"
+	RTE_LOG(INFO, VF, "Usage: %s [EAL args] --"
 			" --client-id CLIENT_ID"
 			" -s SERVER_IP:SERVER_PORT"
 			" [--vhost-client]\n"
@@ -73,7 +79,7 @@ parse_app_client_id(const char *client_id_str, int *client_id)
 		return SPP_RET_NG;
 
 	*client_id = id;
-	RTE_LOG(DEBUG, APP, "Set client id = %d\n", *client_id);
+	RTE_LOG(DEBUG, VF, "Set client id = %d\n", *client_id);
 	return SPP_RET_OK;
 }
 
@@ -98,8 +104,8 @@ parse_app_server(const char *server_str, char *server_ip, int *server_port)
 	memcpy(server_ip, server_str, pos);
 	server_ip[pos] = '\0';
 	*server_port = port;
-	RTE_LOG(DEBUG, APP, "Set server IP   = %s\n", server_ip);
-	RTE_LOG(DEBUG, APP, "Set server port = %d\n", *server_port);
+	RTE_LOG(DEBUG, VF, "Set server IP   = %s\n", server_ip);
+	RTE_LOG(DEBUG, VF, "Set server port = %d\n", *server_port);
 	return SPP_RET_OK;
 }
 
@@ -170,7 +176,7 @@ parse_app_args(int argc, char *argv[])
 		usage(progname);
 		return SPP_RET_NG;
 	}
-	RTE_LOG(INFO, APP,
+	RTE_LOG(INFO, VF,
 			"app opts (client_id=%d,server=%s:%d,"
 			"vhost_client=%d)\n",
 			g_startup_param.client_id,
@@ -191,7 +197,7 @@ slave_main(void *arg __attribute__ ((unused)))
 	struct core_mng_info *info = &g_core_info[lcore_id];
 	struct core_info *core = get_core_info(lcore_id);
 
-	RTE_LOG(INFO, APP, "Core[%d] Start.\n", lcore_id);
+	RTE_LOG(INFO, VF, "Core[%d] Start.\n", lcore_id);
 	set_core_status(lcore_id, SPP_CORE_IDLE);
 
 	while ((status = spp_get_core_status(lcore_id)) !=
@@ -223,7 +229,7 @@ slave_main(void *arg __attribute__ ((unused)))
 			}
 		}
 		if (unlikely(ret != 0)) {
-			RTE_LOG(ERR, APP, "Core[%d] Component Error. "
+			RTE_LOG(ERR, VF, "Core[%d] Component Error. "
 					"(id = %d)\n",
 					lcore_id, core->id[cnt]);
 			break;
@@ -231,7 +237,7 @@ slave_main(void *arg __attribute__ ((unused)))
 	}
 
 	set_core_status(lcore_id, SPP_CORE_STOP);
-	RTE_LOG(INFO, APP, "Core[%d] End.\n", lcore_id);
+	RTE_LOG(INFO, VF, "Core[%d] End.\n", lcore_id);
 	return ret;
 }
 
@@ -248,7 +254,7 @@ main(int argc, char *argv[])
 	/* Daemonize process */
 	int ret_daemon = daemon(0, 0);
 	if (unlikely(ret_daemon != 0)) {
-		RTE_LOG(ERR, APP, "daemonize is failed. (ret = %d)\n",
+		RTE_LOG(ERR, VF, "daemonize is failed. (ret = %d)\n",
 				ret_daemon);
 		return ret_daemon;
 	}
@@ -283,7 +289,7 @@ main(int argc, char *argv[])
 					  g_change_component,
 					  &g_backup_info,
 					  g_main_lcore_id) < SPP_RET_OK) {
-			RTE_LOG(ERR, APP, "manage address set is failed.\n");
+			RTE_LOG(ERR, VF, "manage address set is failed.\n");
 			break;
 		}
 
@@ -327,8 +333,8 @@ main(int argc, char *argv[])
 
 		/* Start forwarding */
 		set_all_core_status(SPP_CORE_FORWARD);
-		RTE_LOG(INFO, APP, "My ID %d start handling message\n", 0);
-		RTE_LOG(INFO, APP, "[Press Ctrl-C to quit ...]\n");
+		RTE_LOG(INFO, VF, "My ID %d start handling message\n", 0);
+		RTE_LOG(INFO, VF, "[Press Ctrl-C to quit ...]\n");
 
 		/* Backup the management information after initialization */
 		backup_mng_info(&g_backup_info);
@@ -370,7 +376,7 @@ main(int argc, char *argv[])
 		g_core_info[g_main_lcore_id].status = SPP_CORE_STOP;
 		int ret_core_end = check_core_status_wait(SPP_CORE_STOP);
 		if (unlikely(ret_core_end != SPP_RET_OK))
-			RTE_LOG(ERR, APP, "Core did not stop.\n");
+			RTE_LOG(ERR, VF, "Core did not stop.\n");
 
 		/*
 		 * Remove vhost sock file if it is not running
@@ -383,6 +389,6 @@ main(int argc, char *argv[])
 	spp_ringlatencystats_uninit();
 #endif /* SPP_RINGLATENCYSTATS_ENABLE */
 
-	RTE_LOG(INFO, APP, "spp_vf exit.\n");
+	RTE_LOG(INFO, VF, "spp_vf exit.\n");
 	return ret;
 }

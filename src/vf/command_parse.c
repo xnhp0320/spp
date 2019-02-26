@@ -151,7 +151,6 @@ static enum spp_component_type
 spp_convert_component_type(const char *type_str)
 {
 	RTE_LOG(DEBUG, SPP_COMMAND_PARSE, "type_str is %s\n", type_str);
-#ifdef SPP_VF_MODULE
 	if (strncmp(type_str, TYPE_CLASSIFIER_STR,
 			strlen(TYPE_CLASSIFIER_STR)+1) == 0) {
 		/* Classifier */
@@ -165,13 +164,6 @@ spp_convert_component_type(const char *type_str)
 		/* Forwarder */
 		return SPP_COMPONENT_FORWARD;
 	}
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
-	if (strncmp(type_str, TYPE_MIRROR_STR,
-			strlen(TYPE_MIRROR_STR)+1) == 0)
-		/* Mirror */
-		return SPP_COMPONENT_MIRROR;
-#endif /* SPP_MIRROR_MODULE */
 	return SPP_COMPONENT_UNUSE;
 }
 

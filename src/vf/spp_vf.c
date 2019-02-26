@@ -170,12 +170,10 @@ parse_app_args(int argc, char *argv[])
 		usage(progname);
 		return SPP_RET_NG;
 	}
-	g_startup_param.secondary_type = SECONDARY_TYPE_VF;
 	RTE_LOG(INFO, APP,
-			"app opts (client_id=%d,type=%d,server=%s:%d,"
+			"app opts (client_id=%d,server=%s:%d,"
 			"vhost_client=%d)\n",
 			g_startup_param.client_id,
-			g_startup_param.secondary_type,
 			g_startup_param.server_ip,
 			g_startup_param.server_port,
 			g_startup_param.vhost_client);

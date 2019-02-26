@@ -16,10 +16,14 @@
 #include "spp_proc.h"
 #include "spp_pcap.h"
 #include "command_proc.h"
-#include "command_dec.h"
+#include "command_parse.h"
 #include "spp_port.h"
 
 /* Declare global variables */
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
 #define RTE_LOGTYPE_SPP_PCAP RTE_LOGTYPE_USER2
 
 #define PCAP_FPATH_STRLEN 128

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2018-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <unistd.h>
@@ -10,6 +10,10 @@
 
 #include "spp_proc.h"
 
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
 #define RTE_LOGTYPE_SPP_PROC RTE_LOGTYPE_USER2
 
 /* Manage data to addoress */

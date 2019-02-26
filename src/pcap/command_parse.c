@@ -9,13 +9,17 @@
 #include <rte_log.h>
 #include <rte_branch_prediction.h>
 
-#include "command_dec.h"
+#include "command_parse.h"
 
-#define RTE_LOGTYPE_SPP_COMMAND_DEC RTE_LOGTYPE_USER2
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_SPP_COMMAND_PARSE RTE_LOGTYPE_USER2
 
 /* set parse error */
 static inline int
-set_parse_error(struct spp_command_parse_error *error,
+set_parse_error(struct spp_parse_command_error *error,
 		const int error_code, const char *error_name)
 {
 	error->code = error_code;
@@ -28,11 +32,11 @@ set_parse_error(struct spp_command_parse_error *error,
 
 /* set parse error */
 static inline int
-set_string_value_parse_error(struct spp_command_parse_error *error,
+set_string_value_parse_error(struct spp_parse_command_error *error,
 		const char *value, const char *error_name)
 {
 	strcpy(error->value, value);
-	return set_parse_error(error, BAD_VALUE, error_name);
+	return set_parse_error(error, WRONG_VALUE, error_name);
 }
 
 /* Split command line parameter with spaces */
@@ -63,7 +67,7 @@ struct parse_command_list {
 	int   param_min;        /* Min number of parameters */
 	int   param_max;        /* Max number of parameters */
 	int (*func)(struct spp_command_request *request, int argc,
-			char *argv[], struct spp_command_parse_error *error,
+			char *argv[], struct spp_parse_command_error *error,
 			int maxargc);
 				/* Pointer to command handling function */
 	enum spp_command_type type;
@@ -84,27 +88,27 @@ static struct parse_command_list command_list_pcap[] = {
 static int
 parse_command_in_list(struct spp_command_request *request,
 			const char *request_str,
-			struct spp_command_parse_error *error)
+			struct spp_parse_command_error *error)
 {
 	int ret = SPP_RET_OK;
 	int command_name_check = 0;
 	struct parse_command_list *list = NULL;
 	int i = 0;
 	int argc = 0;
-	char *argv[SPP_CMD_MAX_PARAMETERS];
-	char tmp_str[SPP_CMD_MAX_PARAMETERS*SPP_CMD_VALUE_BUFSZ];
+	char *argv[CMD_MAX_PARAMETERS];
+	char tmp_str[CMD_MAX_PARAMETERS*CMD_VALUE_BUFSZ];
 	memset(argv, 0x00, sizeof(argv));
 	memset(tmp_str, 0x00, sizeof(tmp_str));
 
 	strcpy(tmp_str, request_str);
-	ret = parse_parameter_value(tmp_str, SPP_CMD_MAX_PARAMETERS,
+	ret = parse_parameter_value(tmp_str, CMD_MAX_PARAMETERS,
 			&argc, argv);
 	if (ret < SPP_RET_OK) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Parameter number over limit."
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Parameter number over limit."
 				"request_str=%s\n", request_str);
-		return set_parse_error(error, BAD_FORMAT, NULL);
+		return set_parse_error(error, WRONG_FORMAT, NULL);
 	}
-	RTE_LOG(DEBUG, SPP_COMMAND_DEC, "Decode array. num=%d\n", argc);
+	RTE_LOG(DEBUG, SPP_COMMAND_PARSE, "Decode array. num=%d\n", argc);
 
 	for (i = 0; command_list_pcap[i].name[0] != '\0'; i++) {
 		list = &command_list_pcap[i];
@@ -126,12 +130,12 @@ parse_command_in_list(struct spp_command_request *request,
 	}
 
 	if (command_name_check != 0) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC, "Parameter number out of range."
+		RTE_LOG(ERR, SPP_COMMAND_PARSE, "Parameter number out of range."
 				"request_str=%s\n", request_str);
-		return set_parse_error(error, BAD_FORMAT, NULL);
+		return set_parse_error(error, WRONG_FORMAT, NULL);
 	}
 
-	RTE_LOG(ERR, SPP_COMMAND_DEC,
+	RTE_LOG(ERR, SPP_COMMAND_PARSE,
 			"Unknown command. command=%s, request_str=%s\n",
 			argv[0], request_str);
 	return set_string_value_parse_error(error, argv[0], "command");
@@ -139,10 +143,10 @@ parse_command_in_list(struct spp_command_request *request,
 
 /* parse request from no-null-terminated string */
 int
-spp_command_parse_request(
+spp_parse_command_request(
 		struct spp_command_request *request,
 		const char *request_str, size_t request_str_len,
-		struct spp_command_parse_error *error)
+		struct spp_parse_command_error *error)
 {
 	int ret = SPP_RET_NG;
 	int i;
@@ -151,7 +155,7 @@ spp_command_parse_request(
 	request->num_command = 1;
 	ret = parse_command_in_list(request, request_str, error);
 	if (unlikely(ret != SPP_RET_OK)) {
-		RTE_LOG(ERR, SPP_COMMAND_DEC,
+		RTE_LOG(ERR, SPP_COMMAND_PARSE,
 				"Cannot parse command request. "
 				"ret=%d, request_str=%.*s\n",
 				ret, (int)request_str_len, request_str);

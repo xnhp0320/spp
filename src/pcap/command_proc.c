@@ -10,24 +10,28 @@
 #include "string_buffer.h"
 #include "spp_pcap.h"
 #include "command_conn.h"
-#include "command_dec.h"
+#include "command_parse.h"
 #include "command_proc.h"
 
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
 #define RTE_LOGTYPE_SPP_COMMAND_PROC RTE_LOGTYPE_USER2
 
 /* request message initial size */
-#define CMD_RES_ERR_MSG_SIZE  128
+#define CMD_RES_ERR_MSG_SIZE  160
 #define CMD_TAG_APPEND_SIZE   16
 #define CMD_REQ_BUF_INIT_SIZE 2048
 #define CMD_RES_BUF_INIT_SIZE 2048
 
 #define COMMAND_RESP_LIST_EMPTY { "", NULL }
 
-#define JSON_APPEND_COMMA(flg)    ((flg)?", ":"")
-#define JSON_APPEND_VALUE(format) "%s\"%s\": "format
-#define JSON_APPEND_ARRAY         "%s\"%s\": [ %s ]"
-#define JSON_APPEND_BLOCK         "%s\"%s\": { %s }"
-#define JSON_APPEND_BLOCK_NONAME  "%s%s{ %s }"
+#define JSON_APPEND_COMMA(flg)    ((flg)?",":"")
+#define JSON_APPEND_VALUE(format) "%s\"%s\":"format
+#define JSON_APPEND_ARRAY         "%s\"%s\":[%s]"
+#define JSON_APPEND_BLOCK         "%s\"%s\":{%s}"
+#define JSON_APPEND_BLOCK_NONAME  "%s%s{%s}"
 
 /* command execution result type */
 enum command_result_type {
@@ -42,7 +46,7 @@ struct command_result {
 	int code;
 
 	/* Response message */
-	char msg[SPP_CMD_NAME_BUFSZ];
+	char msg[CMD_NAME_BUFSZ];
 
 	/* Detailed response message */
 	char error_message[CMD_RES_ERR_MSG_SIZE];
@@ -51,7 +55,7 @@ struct command_result {
 /* command response list control structure */
 struct command_response_list {
 	/* JSON Tag name */
-	char tag_name[SPP_CMD_NAME_BUFSZ];
+	char tag_name[CMD_NAME_BUFSZ];
 
 	/* Pointer to handling function */
 	int (*func)(const char *name, char **output, void *tmp);
@@ -272,12 +276,12 @@ execute_command(const struct spp_command *command)
 /* parse error message for response */
 static const char *
 parse_error_message(
-		const struct spp_command_parse_error *parse_error,
+		const struct spp_parse_command_error *parse_error,
 		char *message)
 {
 	switch (parse_error->code) {
-	case BAD_FORMAT:
-		sprintf(message, "bad message format");
+	case WRONG_FORMAT:
+		sprintf(message, "wrong message format");
 		break;
 
 	case UNKNOWN_COMMAND:
@@ -289,13 +293,13 @@ parse_error_message(
 				parse_error->value_name);
 		break;
 
-	case BAD_TYPE:
-		sprintf(message, "bad value type(%s)",
+	case WRONG_TYPE:
+		sprintf(message, "wrong value type(%s)",
 				parse_error->value_name);
 		break;
 
-	case BAD_VALUE:
-		sprintf(message, "bad value(%s)", parse_error->value_name);
+	case WRONG_VALUE:
+		sprintf(message, "wrong value(%s)", parse_error->value_name);
 		break;
 
 	default:
@@ -333,7 +337,7 @@ set_command_results(struct command_result *result,
 static void
 set_parse_error_to_results(struct command_result *results,
 		const struct spp_command_request *request,
-		const struct spp_command_parse_error *parse_error)
+		const struct spp_parse_command_error *parse_error)
 {
 	int i;
 	const char *tmp_buff;
@@ -864,11 +868,11 @@ process_request(int *sock, const char *request_str, size_t request_str_len)
 	int i;
 
 	struct spp_command_request request;
-	struct spp_command_parse_error parse_error;
-	struct command_result command_results[SPP_CMD_MAX_COMMANDS];
+	struct spp_parse_command_error parse_error;
+	struct command_result command_results[CMD_MAX_COMMANDS];
 
 	memset(&request, 0, sizeof(struct spp_command_request));
-	memset(&parse_error, 0, sizeof(struct spp_command_parse_error));
+	memset(&parse_error, 0, sizeof(struct spp_parse_command_error));
 	memset(command_results, 0, sizeof(command_results));
 
 	RTE_LOG(DEBUG, SPP_COMMAND_PROC, "Start command request processing. "
@@ -876,7 +880,7 @@ process_request(int *sock, const char *request_str, size_t request_str_len)
 			(int)request_str_len, request_str);
 
 	/* parse request message */
-	ret = spp_command_parse_request(
+	ret = spp_parse_command_request(
 			&request, request_str, request_str_len, &parse_error);
 	if (unlikely(ret != SPP_RET_OK)) {
 		/* send error response */

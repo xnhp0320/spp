@@ -15,7 +15,6 @@
 #include <rte_memcpy.h>
 
 #include "ringlatencystats.h"
-#include "spp_proc.h"
 
 #define NS_PER_SEC 1E9
 
@@ -26,6 +25,11 @@
 #define RTE_LOGTYPE_SPP_RING_LATENCY_STATS RTE_LOGTYPE_USER2
 
 #ifdef SPP_RINGLATENCYSTATS_ENABLE
+
+enum spp_return_value {
+	SPP_RET_OK = 0,  /**< succeeded */
+	SPP_RET_NG = -1, /**< failed */
+};
 
 /** ring latency statistics information */
 struct ring_latency_stats_info {

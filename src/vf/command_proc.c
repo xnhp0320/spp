@@ -10,13 +10,8 @@
 
 #include "spp_port.h"
 #include "string_buffer.h"
-#ifdef SPP_VF_MODULE
-#include "../classifier_mac.h"
-#include "../spp_forward.h"
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
-#include "../../mirror/spp_mirror.h"
-#endif /* SPP_MIRROR_MODULE */
+#include "classifier_mac.h"
+#include "spp_forward.h"
 #include "command_conn.h"
 #include "command_parse.h"
 #include "command_proc.h"
@@ -80,18 +75,6 @@ const char *CLASSIFILER_TYPE_STATUS[] = {
 };
 
 /*
- * seconary type string list
- * do it same the order enum secondary_type (spp_proc.h)
- */
-const char *SECONDARY_PROCESS_TYPE_SRINGS[] = {
-	"none",
-	"vf",
-	"mirror",
-
-	/* termination */ "",
-};
-
-/*
  * port ability string list
  * do it same as the order of enum spp_port_ability_type (spp_vf.h)
  */
@@ -112,17 +95,6 @@ spp_get_client_id(void)
 	spp_get_mng_data_addr(&startup_param,
 			NULL, NULL, NULL, NULL, NULL, NULL);
 	return startup_param->client_id;
-}
-
-/* get process type */
-static int
-spp_get_process_type(void)
-{
-	struct startup_param *startup_param;
-
-	spp_get_mng_data_addr(&startup_param,
-			NULL, NULL, NULL, NULL, NULL, NULL);
-	return startup_param->secondary_type;
 }
 
 /* Check if port has been flushed. */
@@ -301,11 +273,9 @@ spp_update_component(
 		info = (core_info + tmp_lcore_id);
 		core = &info->core[info->upd_index];
 
-#ifdef SPP_VF_MODULE
 		/* initialize classifier information */
 		if (comp_info->type == SPP_COMPONENT_CLASSIFIER_MAC)
 			init_classifier_info(component_id);
-#endif /* SPP_VF_MODULE */
 
 		ret_del = del_component_info(component_id,
 				core->num, core->id);
@@ -353,11 +323,6 @@ check_port_count(int component_type, enum spp_port_rxtx rxtx, int num_rx,
 
 	case SPP_COMPONENT_CLASSIFIER_MAC:
 		if (num_rx > 1)
-			return SPP_RET_NG;
-		break;
-
-	case SPP_COMPONENT_MIRROR:
-		if (num_rx > 1 || num_tx > 2)
 			return SPP_RET_NG;
 		break;
 
@@ -559,7 +524,6 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 			spp_get_mng_data_addr(NULL, NULL, &comp_info_base,
 							NULL, NULL, NULL, NULL);
 			comp_info = (comp_info_base + core->id[cnt]);
-#ifdef SPP_VF_MODULE
 			if (comp_info->type == SPP_COMPONENT_CLASSIFIER_MAC) {
 				ret = spp_classifier_get_component_status(
 						lcore_id,
@@ -571,13 +535,6 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 						core->id[cnt],
 						params);
 			}
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
-			ret = spp_mirror_get_component_status(
-						lcore_id,
-						core->id[cnt],
-						params);
-#endif /* SPP_MIRROR_MODULE */
 			if (unlikely(ret != 0)) {
 				RTE_LOG(ERR, SPP_COMMAND_PROC, "Cannot iterate"
 						" core information. "
@@ -592,7 +549,6 @@ spp_iterate_core_info(struct spp_iterate_core_params *params)
 }
 
 /* Iterate classifier_table to create response to status command */
-#ifdef SPP_VF_MODULE
 static int
 spp_iterate_classifier_table(
 		struct spp_iterate_classifier_table_params *params)
@@ -608,7 +564,6 @@ spp_iterate_classifier_table(
 
 	return SPP_RET_OK;
 }
-#endif /* SPP_VF_MODULE */
 
 /* Get port number assigned by DPDK lib */
 static int
@@ -1006,8 +961,7 @@ static int
 append_process_type_value(const char *name, char **output,
 		void *tmp __attribute__ ((unused)))
 {
-	return append_json_str_value(name, output,
-			SECONDARY_PROCESS_TYPE_SRINGS[spp_get_process_type()]);
+	return append_json_str_value(name, output, "vf");
 }
 
 /* append a list of interface numbers for JSON format */
@@ -1258,7 +1212,6 @@ append_core_value(const char *name, char **output,
 }
 
 /* append one element of classifier table for JSON format */
-#ifdef SPP_VF_MODULE
 static int
 append_classifier_element_value(
 		struct spp_iterate_classifier_table_params *params,
@@ -1311,10 +1264,8 @@ append_classifier_element_value(
 	params->output = buff;
 	return ret;
 }
-#endif /* SPP_VF_MODULE */
 
 /* append a list of classifier table for JSON format */
-#ifdef SPP_VF_MODULE
 static int
 append_classifier_table_value(const char *name, char **output,
 		void *tmp __attribute__ ((unused)))
@@ -1342,7 +1293,7 @@ append_classifier_table_value(const char *name, char **output,
 	spp_strbuf_free(itr_params.output);
 	return ret;
 }
-#endif /* SPP_VF_MODULE */
+
 /* append string of command response list for JSON format */
 static int
 append_response_list_value(char **output,
@@ -1418,9 +1369,7 @@ struct command_response_list response_info_list[] = {
 	{ "vhost",            append_interface_value },
 	{ "ring",             append_interface_value },
 	{ "core",             append_core_value },
-#ifdef SPP_VF_MODULE
 	{ "classifier_table", append_classifier_table_value },
-#endif /* SPP_VF_MODULE */
 	COMMAND_RESP_TAG_LIST_EMPTY
 };
 

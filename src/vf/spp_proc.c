@@ -17,13 +17,8 @@
 #include "shared/secondary/add_port.h"
 #include "shared/secondary/utils.h"
 
-#ifdef SPP_VF_MODULE
-#include "../spp_forward.h"
-#include "../classifier_mac.h"
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
-#include "../../mirror/spp_mirror.h"
-#endif /* SPP_MIRROR_MODULE */
+#include "spp_forward.h"
+#include "classifier_mac.h"
 
 /**
  * TODO(Ogasawara) change log names.
@@ -908,15 +903,10 @@ flush_component(void)
 		component_info = (p_component_info + cnt);
 		spp_port_ability_update(component_info);
 
-#ifdef SPP_VF_MODULE
 		if (component_info->type == SPP_COMPONENT_CLASSIFIER_MAC)
 			ret = spp_classifier_mac_update(component_info);
 		else
 			ret = spp_forward_update(component_info);
-#endif /* SPP_VF_MODULE */
-#ifdef SPP_MIRROR_MODULE
-		ret = spp_mirror_update(component_info);
-#endif /* SPP_MIRROR_MODULE */
 		if (unlikely(ret < 0)) {
 			RTE_LOG(ERR, SPP_PROC, "Flush error. "
 					"( component = %s, type = %d)\n",

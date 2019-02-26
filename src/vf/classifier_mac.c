@@ -26,7 +26,11 @@
 #include "spp_port.h"
 #include "classifier_mac.h"
 
-#define RTE_LOGTYPE_SPP_CLASSIFIER_MAC RTE_LOGTYPE_USER1
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_CLASSIFIER RTE_LOGTYPE_USER2
 
 #ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
@@ -175,7 +179,7 @@ get_vid(const struct rte_mbuf *pkt)
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 
 #define LOG_DBG(name, fmt, ...)                                        \
-		RTE_LOG_DP(DEBUG, SPP_CLASSIFIER_MAC,                  \
+		RTE_LOG_DP(DEBUG, CLASSIFIER,                          \
 				"[%s]Log(%s:%d):"fmt,                  \
 				name, __func__, __LINE__, __VA_ARGS__)
 
@@ -195,7 +199,7 @@ log_packet(const char *name, struct rte_mbuf *pkt,
 	ether_format_addr(mac_addr_str[1], sizeof(mac_addr_str),
 			&eth->s_addr);
 
-	RTE_LOG_DP(DEBUG, SPP_CLASSIFIER_MAC,
+	RTE_LOG_DP(DEBUG, CLASSIFIER,
 			"[%s]Packet(%s:%d). d_addr=%s, s_addr=%s, "
 			"vid=%hu, pktlen=%u\n",
 			name,
@@ -240,7 +244,7 @@ log_classification(
 				clsd_data[clsd_idx].iface_type,
 				clsd_data[clsd_idx].iface_no_global);
 
-	RTE_LOG_DP(DEBUG, SPP_CLASSIFIER_MAC,
+	RTE_LOG_DP(DEBUG, CLASSIFIER,
 			"[%s]Classification(%s:%d). d_addr=%s, "
 			"s_addr=%s, vid=%hu, pktlen=%u, tx_iface=%s\n",
 			cmp_info->name,
@@ -277,7 +281,7 @@ log_entry(
 				clsd_data[clsd_idx].iface_type,
 				clsd_data[clsd_idx].iface_no_global);
 
-	RTE_LOG_DP(DEBUG, SPP_CLASSIFIER_MAC,
+	RTE_LOG_DP(DEBUG, CLASSIFIER,
 			"[%s]Entry(%s:%d). vid=%hu, mac_addr=%s, iface=%s\n",
 			cmp_info->name,
 			func_name,
@@ -327,7 +331,7 @@ create_mac_classification(void)
 			getpid(),
 			rte_atomic16_add_return(&g_hash_table_count, 1));
 
-	RTE_LOG(INFO, SPP_CLASSIFIER_MAC, "Create table. name=%s, bufsz=%lu\n",
+	RTE_LOG(INFO, CLASSIFIER, "Create table. name=%s, bufsz=%lu\n",
 			hash_tab_name, HASH_TABLE_NAME_BUF_SZ);
 
 	/* set hash creating parameters */
@@ -343,7 +347,7 @@ create_mac_classification(void)
 	/* create classifier mac table (hash table) */
 	*mac_cls_tab = rte_hash_create(&hash_params);
 	if (unlikely(*mac_cls_tab == NULL)) {
-		RTE_LOG(ERR, SPP_CLASSIFIER_MAC,
+		RTE_LOG(ERR, CLASSIFIER,
 				"Cannot create mac classification table. "
 				"name=%s\n", hash_tab_name);
 		rte_free(mac_cls);
@@ -405,7 +409,7 @@ init_component_info(struct component_info *cmp_info,
 
 		/* if mac classification is NULL, make instance */
 		if (unlikely(cmp_info->mac_classifications[vid] == NULL)) {
-			RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
+			RTE_LOG(DEBUG, CLASSIFIER,
 					"Mac classification is not registered."
 					" create. vid=%hu\n", vid);
 			cmp_info->mac_classifications[vid] =
@@ -427,7 +431,7 @@ init_component_info(struct component_info *cmp_info,
 		if (unlikely(tx_port->class_id.mac_addr ==
 				SPP_DEFAULT_CLASSIFIED_DMY_ADDR)) {
 			mac_cls->default_classified = i;
-			RTE_LOG(INFO, SPP_CLASSIFIER_MAC,
+			RTE_LOG(INFO, CLASSIFIER,
 					"default classified. vid=%hu, "
 					"iface_type=%d, iface_no=%d, "
 					"dpdk_port=%d\n",
@@ -447,7 +451,7 @@ init_component_info(struct component_info *cmp_info,
 		ret = rte_hash_add_key_data(mac_cls->classification_tab,
 				(void *)&eth_addr, (void *)(long)i);
 		if (unlikely(ret < 0)) {
-			RTE_LOG(ERR, SPP_CLASSIFIER_MAC,
+			RTE_LOG(ERR, CLASSIFIER,
 					"Cannot add entry to classifier mac "
 					"table. ret=%d, vid=%hu, "
 					"mac_addr=%s\n",
@@ -455,7 +459,7 @@ init_component_info(struct component_info *cmp_info,
 			return SPP_RET_NG;
 		}
 
-		RTE_LOG(INFO, SPP_CLASSIFIER_MAC,
+		RTE_LOG(INFO, CLASSIFIER,
 				"Add entry to classifier mac table. "
 				"vid=%hu, mac_addr=%s, iface_type=%d, "
 				"iface_no=%d, dpdk_port=%d\n",
@@ -523,7 +527,7 @@ transmit_packet(struct classified_data *clsd_data)
 	if (unlikely(n_tx != clsd_data->num_pkt)) {
 		for (i = n_tx; i < clsd_data->num_pkt; i++)
 			rte_pktmbuf_free(clsd_data->pkts[i]);
-		RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
+		RTE_LOG(DEBUG, CLASSIFIER,
 				"drop packets(tx). num=%hu, dpdk_port=%hu\n",
 				(uint16_t)(clsd_data->num_pkt - n_tx),
 				clsd_data->port);
@@ -541,7 +545,7 @@ transmit_all_packet(struct component_info *cmp_info)
 
 	for (i = 0; i < cmp_info->n_classified_data_tx; i++) {
 		if (unlikely(clsd_data_tx[i].num_pkt != 0)) {
-			RTE_LOG(INFO, SPP_CLASSIFIER_MAC,
+			RTE_LOG(INFO, CLASSIFIER,
 					"transmit all packets (drain). "
 					"index=%d, "
 					"num_pkt=%hu\n",
@@ -560,7 +564,7 @@ push_packet(struct rte_mbuf *pkt, struct classified_data *clsd_data)
 
 	/* transmit packet, if buffer is filled */
 	if (unlikely(clsd_data->num_pkt == MAX_PKT_BURST)) {
-		RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
+		RTE_LOG(DEBUG, CLASSIFIER,
 				"transmit packets (buffer is filled). "
 				"iface_type=%d, iface_no={%d,%d}, "
 				"tx_port=%hu, num_pkt=%hu\n",
@@ -610,7 +614,7 @@ handle_l2multicast_packet(struct rte_mbuf *pkt,
 		 */
 		if (unlikely(gen_def_clsd_idx < 0)) {
 			/* untagged's default is not registered too */
-			RTE_LOG(ERR, SPP_CLASSIFIER_MAC,
+			RTE_LOG(ERR, CLASSIFIER,
 					"No entry.(l2 multicast packet)\n");
 			rte_pktmbuf_free(pkt);
 			return;
@@ -744,7 +748,7 @@ change_classifier_index(struct management_info *mng_info, int id)
 		transmit_all_packet(mng_info->cmp_infos +
 				mng_info->ref_index);
 
-		RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
+		RTE_LOG(DEBUG, CLASSIFIER,
 				"Core[%u] Change update index.\n", id);
 		mng_info->ref_index =
 				(mng_info->upd_index + 1) %
@@ -780,7 +784,7 @@ spp_classifier_mac_update(struct spp_component_info *component_info)
 	struct management_info *mng_info = g_mng_infos + id;
 	struct component_info *cmp_info = NULL;
 
-	RTE_LOG(INFO, SPP_CLASSIFIER_MAC,
+	RTE_LOG(INFO, CLASSIFIER,
 			"Component[%u] Start update component.\n", id);
 
 	cmp_info = mng_info->cmp_infos + mng_info->upd_index;
@@ -788,7 +792,7 @@ spp_classifier_mac_update(struct spp_component_info *component_info)
 	/* initialize update side classifier information */
 	ret = init_component_info(cmp_info, component_info);
 	if (unlikely(ret != SPP_RET_OK)) {
-		RTE_LOG(ERR, SPP_CLASSIFIER_MAC,
+		RTE_LOG(ERR, CLASSIFIER,
 				"Cannot update classifier mac. ret=%d\n", ret);
 		return ret;
 	}
@@ -806,7 +810,7 @@ spp_classifier_mac_update(struct spp_component_info *component_info)
 	/* uninitialize old */
 	uninit_component_info(mng_info->cmp_infos + mng_info->upd_index);
 
-	RTE_LOG(INFO, SPP_CLASSIFIER_MAC,
+	RTE_LOG(INFO, CLASSIFIER,
 			"Component[%u] Complete update component.\n", id);
 
 	return SPP_RET_OK;
@@ -853,7 +857,7 @@ spp_classifier_mac_do(int id)
 			if (likely(clsd_data_tx[i].num_pkt == 0))
 				continue;
 
-			RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
+			RTE_LOG(DEBUG, CLASSIFIER,
 					"transmit packets (drain). index=%d, "
 					"num_pkt=%hu, interval=%lu\n",
 					i, clsd_data_tx[i].num_pkt,
@@ -893,7 +897,7 @@ spp_classifier_get_component_status(
 
 	mng_info = g_mng_infos + id;
 	if (!is_used_mng_info(mng_info)) {
-		RTE_LOG(ERR, SPP_CLASSIFIER_MAC,
+		RTE_LOG(ERR, CLASSIFIER,
 				"Component[%d] Not used. "
 				"(status)(core = %d, type = %d)\n",
 				id, lcore_id, SPP_COMPONENT_CLASSIFIER_MAC);
@@ -1012,7 +1016,7 @@ spp_classifier_mac_iterate_table(
 		cmp_info = mng_info->cmp_infos + mng_info->ref_index;
 		clsd_data = cmp_info->classified_data_tx;
 
-		RTE_LOG(DEBUG, SPP_CLASSIFIER_MAC,
+		RTE_LOG(DEBUG, CLASSIFIER,
 			"Core[%u] Start iterate classifier table.\n", i);
 
 		for (n = 0; n < SPP_NUM_VLAN_VID; ++n) {

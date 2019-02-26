@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
 #include <rte_cycles.h>
@@ -8,7 +8,11 @@
 #include "spp_port.h"
 #include "spp_forward.h"
 
-#define RTE_LOGTYPE_FORWARD RTE_LOGTYPE_USER1
+/**
+ * TODO(Ogasawara) change log names.
+ *  After a naming convention decision.
+ */
+#define RTE_LOGTYPE_FORWARD RTE_LOGTYPE_USER2
 
 /* A set of port info of rx and tx */
 struct forward_rxtx {

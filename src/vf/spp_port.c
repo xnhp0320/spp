@@ -385,7 +385,7 @@ spp_eth_rx_burst(
 	if (g_port_mng_info[port_id].iface_type == RING)
 		spp_ringlatencystats_calculate_latency(
 				g_port_mng_info[port_id].iface_no,
-				rx_pkts, nb_pkts);
+				rx_pkts, nb_rx);
 #endif /* SPP_RINGLATENCYSTATS_ENABLE */
 
 	return port_ability_each_operation(port_id, rx_pkts, nb_rx,

@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Nippon Telegraph and Telephone Corporation
+ * Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
  */
 
-#ifndef __SPP_PORT_H__
-#define __SPP_PORT_H__
+#ifndef __SPP_VF_PORT_H__
+#define __SPP_VF_PORT_H__
 
 /**
  * @file
@@ -110,4 +110,4 @@ uint16_t spp_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 uint16_t spp_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
 		struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 
-#endif /*  __SPP_PORT_H__ */
+#endif /*  __SPP_VF_PORT_H__ */

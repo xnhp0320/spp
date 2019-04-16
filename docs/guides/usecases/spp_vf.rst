@@ -29,10 +29,9 @@ Incoming packets through ``NIC0`` are classified based on destination address.
 
 Setup
 ~~~~~
-test
-
-.. code-block:: console
+rcps test start
 .. literalinclude:: 1-start_components.rcps
+test test end
 
 Launch ``spp-ctl`` and SPP CLI before primary and secondary processes.
 

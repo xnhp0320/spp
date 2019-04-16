@@ -1,0 +1,7 @@
+# Start component for path1
+sec 1;component start classifier1 2 classifier_mac
+sec 1;component start forwarder1 3 forward
+sec 1;component start forwarder2 4 forward
+sec 1;component start forwarder3 5 forward
+sec 1;component start forwarder4 6 forward
+sec 1;component start merger1 7 merge

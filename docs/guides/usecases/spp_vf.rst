@@ -1,7 +1,7 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017-2019 Nippon Telegraph and Telephone Corporation
 
-.. |sec| replace:: spp>sec
+.. |sec| replace:: spp > sec
 
 .. _spp_usecases_vf:
 

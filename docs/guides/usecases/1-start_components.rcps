@@ -1,7 +1,5 @@
-# Start component for path1
-sec 1;component start classifier1 2 classifier_mac
-sec 1;component start forwarder1 3 forward
-sec 1;component start forwarder2 4 forward
-sec 1;component start forwarder3 5 forward
-sec 1;component start forwarder4 6 forward
-sec 1;component start merger1 7 merge
+# This is rcps file image. following lines must be input to the prompt "spp>"
+     vf 1; component start cls 3 classifier_mac
+     vf 1; component start fwd1 4 forward
+     vf 1; component start fwd2 5 forward
+     vf 1; component start mgr 6 merge

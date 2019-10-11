@@ -20,6 +20,8 @@
 
 #define RING_SIZE 128
 #define BURST_SIZE 32
+#define NUM_MBUFS 8191
+#define MBUF_CACHE_SIZE 512
 
 #define PKTMBUF_POOL_NAME "MProc_pktmbuf_pool"
 
@@ -80,13 +82,14 @@ main(int argc, char *argv[])
 	int ret;
 	uint16_t port_id;
 	uint16_t nb_ports;
-	struct rte_mempool *mbuf_pool;
+	struct rte_mempool *mbuf_pool = NULL;
         struct rte_mbuf *m;
 	uint16_t nb_tx;
 	struct rte_mbuf *bufs[BURST_SIZE];
 	uint16_t nb_rx;
 	struct rte_eth_conf port_conf = port_conf_default;
 	struct rte_eth_stats stats;
+	int is_pipe = 0;
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0) {
@@ -103,8 +106,11 @@ main(int argc, char *argv[])
 	}
 	printf("device: %s tx_first: %d devargs: %s\n", device, tx_first, devargs);
 
-	if (rte_eal_process_type() != RTE_PROC_SECONDARY) {
-		rte_exit(EXIT_FAILURE, "must be secondary\n");
+	if (strncmp("net_pipe", device, 8) == 0) {
+		is_pipe = 1;
+		if (rte_eal_process_type() != RTE_PROC_SECONDARY) {
+			rte_exit(EXIT_FAILURE, "must be secondary\n");
+		}
 	}
 
 	if (devargs) {
@@ -131,7 +137,13 @@ main(int argc, char *argv[])
 	/* just infomation */
         printf("num port: %u\n", (unsigned)nb_ports);
 
-	mbuf_pool = rte_mempool_lookup(PKTMBUF_POOL_NAME);
+	if (is_pipe) {
+		mbuf_pool = rte_mempool_lookup(PKTMBUF_POOL_NAME);
+	} else {
+                mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS,
+                        MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
+			rte_socket_id());
+	}
 	if (mbuf_pool == NULL) {
 		rte_exit(EXIT_FAILURE, "Cannot get mbuf pool\n");
 	}
@@ -186,6 +198,7 @@ main(int argc, char *argv[])
 			if (nb_tx < nb_rx) {
 				fprintf(stderr, "can't send. recv: %u send: %u\n",
 						nb_rx, nb_tx);
+				force_quit = 1;
 				break;
 			}
 		}

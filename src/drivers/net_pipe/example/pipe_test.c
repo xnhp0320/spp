@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #include <rte_eal.h>
 #include <rte_ethdev.h>
@@ -90,6 +91,8 @@ main(int argc, char *argv[])
 	struct rte_eth_conf port_conf = port_conf_default;
 	struct rte_eth_stats stats;
 	int is_pipe = 0;
+	struct timeval t0, t1;
+	long total;
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0) {
@@ -188,6 +191,7 @@ main(int argc, char *argv[])
 			goto out;
 		}
 		printf("send a packet\n");
+		gettimeofday(&t0, NULL);
 	}
 
 	/* recieve and send a packet */
@@ -198,11 +202,12 @@ main(int argc, char *argv[])
 			if (nb_tx < nb_rx) {
 				fprintf(stderr, "can't send. recv: %u send: %u\n",
 						nb_rx, nb_tx);
-				force_quit = 1;
 				break;
 			}
 		}
 	}
+
+	gettimeofday(&t1, NULL);
 
 	ret = rte_eth_stats_get(port_id, &stats);
 	if (ret == 0) {
@@ -210,6 +215,12 @@ main(int argc, char *argv[])
 		printf("opackets: %lu\n", stats.opackets);
 		printf("ierrors: %lu\n", stats.ierrors);
 		printf("oerrors: %lu\n", stats.oerrors);
+		if (tx_first) {
+			total = (t1.tv_sec - t0.tv_sec) * 1000000 \
+				+ t1.tv_usec - t0.tv_usec;
+			printf("%ld us: %.2f packet/s\n", total,
+				(double)stats.ipackets / total * 1000000);
+		}
 	}
 
 out:

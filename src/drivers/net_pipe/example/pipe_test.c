@@ -93,6 +93,7 @@ main(int argc, char *argv[])
 	int is_pipe = 0;
 	struct timeval t0, t1;
 	long total;
+	uint16_t buf;
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0) {
@@ -199,10 +200,8 @@ main(int argc, char *argv[])
 		nb_rx = rte_eth_rx_burst(port_id, 0, bufs, BURST_SIZE);
 		if (nb_rx > 0) {
 			nb_tx = rte_eth_tx_burst(port_id, 0, bufs, nb_rx);
-			if (nb_tx < nb_rx) {
-				fprintf(stderr, "can't send. recv: %u send: %u\n",
-						nb_rx, nb_tx);
-				break;
+			for (buf = nb_tx; buf < nb_rx; buf++) {
+				rte_pktmbuf_free(bufs[buf]);
 			}
 		}
 	}

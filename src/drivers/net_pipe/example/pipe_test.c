@@ -176,6 +176,7 @@ main(int argc, char *argv[])
 
 	force_quit = 0;
 	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	if (tx_first) {
 		/* send a packet */

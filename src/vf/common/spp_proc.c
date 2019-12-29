@@ -116,7 +116,7 @@ int
 spp_vf_add_vhost_pmd(int index, int client)
 {
 	struct rte_eth_conf port_conf = {
-		.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+		.rxmode = { .max_rx_pkt_len = RTE_ETHER_MAX_LEN }
 	};
 	struct rte_mempool *mp;
 	uint16_t vhost_port_id;
@@ -971,7 +971,7 @@ spp_change_mac_str_to_int64(const char *mac)
 			break;
 
 		/* Check for mal-formatted address */
-		if (unlikely(token_cnt >= ETHER_ADDR_LEN)) {
+		if (unlikely(token_cnt >= RTE_ETHER_ADDR_LEN)) {
 			RTE_LOG(ERR, APP, "MAC address format error. "
 					"(mac = %s)\n", mac);
 			return SPP_RET_NG;

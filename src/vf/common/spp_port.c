@@ -46,7 +46,7 @@ void
 spp_port_ability_init(void)
 {
 	int cnt = 0;
-	g_vlan_tpid = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+	g_vlan_tpid = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	memset(g_port_mng_info, 0x00, sizeof(g_port_mng_info));
 	for (cnt = 0; cnt < RTE_MAX_ETHPORTS; cnt++) {
 		g_port_mng_info[cnt].rx.ref_index = 0;
@@ -94,28 +94,28 @@ add_vlantag_packet(
 		struct rte_mbuf *pkt,
 		const union spp_ability_data *data)
 {
-	struct ether_hdr *old_ether = NULL;
-	struct ether_hdr *new_ether = NULL;
-	struct vlan_hdr  *vlan      = NULL;
+	struct rte_ether_hdr *old_ether = NULL;
+	struct rte_ether_hdr *new_ether = NULL;
+	struct rte_vlan_hdr  *vlan      = NULL;
 	const struct spp_vlantag_info *vlantag = &data->vlantag;
 
-	old_ether = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	old_ether = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 	if (old_ether->ether_type == g_vlan_tpid) {
 		/* For packets with VLAN tags, only VLAN ID is updated */
 		new_ether = old_ether;
-		vlan = (struct vlan_hdr *)&new_ether[1];
+		vlan = (struct rte_vlan_hdr *)&new_ether[1];
 	} else {
 		/* For packets without VLAN tag, add VLAN tag. */
-		new_ether = (struct ether_hdr *)rte_pktmbuf_prepend(pkt,
-				sizeof(struct vlan_hdr));
+		new_ether = (struct rte_ether_hdr *)rte_pktmbuf_prepend(pkt,
+				sizeof(struct rte_vlan_hdr));
 		if (unlikely(new_ether == NULL)) {
 			RTE_LOG(ERR, PORT, "Failed to "
 					"get additional header area.\n");
 			return SPP_RET_NG;
 		}
 
-		rte_memcpy(new_ether, old_ether, sizeof(struct ether_hdr));
-		vlan = (struct vlan_hdr *)&new_ether[1];
+		rte_memcpy(new_ether, old_ether, sizeof(struct rte_ether_hdr));
+		vlan = (struct rte_vlan_hdr *)&new_ether[1];
 		vlan->eth_proto = new_ether->ether_type;
 		new_ether->ether_type = g_vlan_tpid;
 	}
@@ -151,15 +151,15 @@ del_vlantag_packet(
 		struct rte_mbuf *pkt,
 		const union spp_ability_data *data __attribute__ ((unused)))
 {
-	struct ether_hdr *old_ether = NULL;
-	struct ether_hdr *new_ether = NULL;
+	struct rte_ether_hdr *old_ether = NULL;
+	struct rte_ether_hdr *new_ether = NULL;
 	uint32_t *old, *new;
 
-	old_ether = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	old_ether = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 	if (old_ether->ether_type == g_vlan_tpid) {
 		/* For packets without VLAN tag, delete VLAN tag. */
-		new_ether = (struct ether_hdr *)rte_pktmbuf_adj(pkt,
-				sizeof(struct vlan_hdr));
+		new_ether = (struct rte_ether_hdr *)rte_pktmbuf_adj(pkt,
+				sizeof(struct rte_vlan_hdr));
 		if (unlikely(new_ether == NULL)) {
 			RTE_LOG(ERR, PORT, "Failed to "
 					"delete unnecessary header area.\n");

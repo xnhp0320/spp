@@ -64,7 +64,7 @@ get_printable_mac_addr(uint16_t port)
 		return err_address;
 
 	if (unlikely(addresses[port][0] == '\0')) {
-		struct ether_addr mac;
+		struct rte_ether_addr mac;
 
 		rte_eth_macaddr_get(port, &mac);
 		snprintf(addresses[port], sizeof(addresses[port]),
